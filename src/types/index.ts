@@ -189,17 +189,14 @@ export interface BudgetStatus {
 
 // Alternative product types
 export interface AlternativeProduct {
-  code: string;
-  productName: string;
-  brand: string;
+  code: string
+  product_name: string
+  brands?: string
   image_url?: string
-  healthScore: number;
-  riskLevel: 'green' | 'yellow' | 'red';
-  price?: number;
-  store?: string;
-  distance?: number;
-  reason: string;
-  improvement: string;
+  health_score?: number
+  risk_level?: string
+  additives?: string[]
+  categories?: string
 }
 
 // Challenge types
