@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { getHealthScoreColor } from '@/lib/utils/healthAnalyzer'
-import type { ScannedProduct } from '@/types'
+import type { ScannedProduct } from '@/types/index'
 import { History, Trash2, ExternalLink, AlertTriangle, Calendar } from 'lucide-react'
 import Link from 'next/link'
 
