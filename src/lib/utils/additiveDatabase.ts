@@ -17,7 +17,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
   // HIGH RISK - Preservatives
   'e250': {
     code: 'E250',
-    name: odium Nitrite',
+    name: 'Sodium Nitrite',
     description: 'Preservative used in processed meats to prevent bacterial growth and maintain pink color.',
     risk_level: 'high',
     health_concerns: [
