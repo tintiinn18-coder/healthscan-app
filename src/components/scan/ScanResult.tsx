@@ -24,7 +24,7 @@ export function ScanResult({ product, analysis }: ScanResultProps) {
   const riskDesc = getRiskLevelDescription(analysis.risk_level)
 
   return (
-    <div className="space-y-4 animate-slide-up">
+   <div className="space-y-4 animate-slide-up"
       {/* Product Header */}
       <Card className="overflow-hidden">
         <div className="flex gap-4">
