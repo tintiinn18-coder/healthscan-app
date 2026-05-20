@@ -50,7 +50,7 @@ export interface AdditiveAnalysis {
   code: string;
   name: string;
   description: string;
-  riskLevel: 'low' | 'medium' | 'high';
+  risk_level: 'low' | 'medium' | 'high'
   healthConcerns: string[];
   conditions: string[];
   dailyLimit?: string;
