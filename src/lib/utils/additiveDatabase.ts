@@ -29,7 +29,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
     conditions_affected: ['cancer_history', 'digestive_issues', 'hypertension', 'diabetes', 'pregnancy', 'infants'],
     daily_limit: '0.07 mg per kg of body weight (JECFA/EFSA)',
     category: 'preservative',
-    aliases: ['s nitrite', 'nitrite', 'NaNO2', 'E250', 'ins nitrite'],
+    aliases: ['sodium nitrite', 'nitrite', 'NaNO2', 'E250', 'insodium nitrite'],
     banned_in: ['Norway (in certain products)'],
     acceptable_in: ['EU', 'USA', 'Canada'],
     long_term_effects: [
@@ -40,7 +40,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
   },
   'e251': {
     code: 'E251',
-    name: 'S Nitrate',
+    name: 'Sodium Nitrate',
     description: 'Naturally occurring salt used as preservative in cured meats and cheeses.',
     risk_level: 'high',
     health_concerns: [
@@ -51,7 +51,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
     conditions_affected: ['cancer_history', 'thyroid_issues', 'digestive_issues', 'pregnancy'],
     daily_limit: '3.7 mg per kg of body weight (JECFA)',
     category: 'preservative',
-    aliases: ['s nitrate', 'Chile saltpeter', 'E251', 'NaNO3'],
+    aliases: ['sodium nitrate', 'Chile saltpeter', 'E251', 'NaNO3'],
     banned_in: [],
     acceptable_in: ['EU', 'USA', 'Canada'],
     long_term_effects: [
@@ -98,7 +98,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
     conditions_affected: ['diabetes', 'digestive_issues', 'bladder_issues'],
     daily_limit: '5 mg per kg of body weight (FDA)',
     category: 'sweetener',
-    aliases: ['saccharin', "Sweet'N Low", 'E954'],
+    aliases: ['saccharin', "Sweet\'N Low", 'E954'],
     banned_in: ['Canada (in certain products)', 'Some EU restrictions'],
     acceptable_in: ['USA', 'Most countries'],
     long_term_effects: [
@@ -110,19 +110,19 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
   // MEDIUM RISK - Preservatives
   'e211': {
     code: 'E211',
-    name: 'S Benzoate',
+    name: 'Sodium Benzoate',
     description: 'Widely used preservative in acidic foods and beverages.',
     risk_level: 'medium',
     health_concerns: [
       'When combined with vitamin C (ascorbic acid), can form benzene - a known carcinogen',
-      'May increase hyperactivity in children ( Southampton University study)',
+      'May increase hyperactivity in children (Southampton University study)',
       'Can trigger asthma attacks in sensitive individuals',
       'May deplete glycine levels, affecting detoxification processes'
     ],
     conditions_affected: ['adhd', 'asthma', 'allergies', 'liver_issues', 'pregnancy'],
     daily_limit: '5 mg per kg of body weight (JECFA)',
     category: 'preservative',
-    aliases: ['s benzoate', 'benzoate of soda', 'E211'],
+    aliases: ['sodium benzoate', 'benzoate of soda', 'E211'],
     banned_in: [],
     acceptable_in: ['EU', 'USA', 'Canada'],
     long_term_effects: [
@@ -202,7 +202,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
   // MEDIUM RISK - Flavor Enhancers
   'e621': {
     code: 'E621',
-    name: 'Monos Glutamate (MSG)',
+    name: 'Monosodium Glutamate (MSG)',
     description: 'Flavor enhancer that adds umami taste to savory foods.',
     risk_level: 'medium',
     health_concerns: [
@@ -214,7 +214,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
     conditions_affected: ['migraine', 'asthma', 'obesity', 'ibs', 'headaches'],
     daily_limit: 'Not specified - ADI "not specified" by JECFA (generally recognized as safe in normal amounts)',
     category: 'flavor_enhancer',
-    aliases: ['monos glutamate', 'MSG', 'E621', 'glutamate', 'yeast extract', 'hydrolyzed protein'],
+    aliases: ['monosodium glutamate', 'MSG', 'E621', 'glutamate', 'yeast extract', 'hydrolyzed protein'],
     banned_in: [],
     acceptable_in: ['Global'],
     long_term_effects: [
@@ -232,7 +232,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
     health_concerns: [
       'Generally recognized as safe',
       'High doses may cause digestive upset in some people',
-      'Can react with s benzoate to form benzene (rare, depends on conditions)'
+      'Can react with sodium benzoate to form benzene (rare, depends on conditions)'
     ],
     conditions_affected: ['kidney_stones_history'],
     daily_limit: 'Not applicable - essential nutrient',
@@ -448,7 +448,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
     conditions_affected: ['vegan', 'vegetarian', 'allergies'],
     daily_limit: 'Not specified',
     category: 'other',
-    aliases: ['shellac', 'lac resin', 'E904', "confectioner's glaze"],
+    aliases: ['shellac', 'lac resin', 'E904', "confectioner\'s glaze"],
     banned_in: [],
     acceptable_in: ['Global'],
     long_term_effects: []
