@@ -170,7 +170,7 @@ export function ScanResult({ product, analysis }: ScanResultProps) {
                   </div>
                   <p className="text-sm text-gray-600">{additive.explanation}</p>
                   {additive.your_risk && (
-                    <Alert variant="warning"> 
+                    <<Alert variant="warning"> 
                       {additive.your_risk}
                     </Alert>
                   )}
