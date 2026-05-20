@@ -192,7 +192,7 @@ export interface AlternativeProduct {
   code: string;
   productName: string;
   brand: string;
-  imageUrl?: string;
+  image_url?: string
   healthScore: number;
   riskLevel: 'green' | 'yellow' | 'red';
   price?: number;
