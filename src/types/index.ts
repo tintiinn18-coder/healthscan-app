@@ -64,6 +64,7 @@ export interface PersonalizedRisk {
   severity: 'low' | 'medium' | 'high';
   explanation: string;
   source: string;
+  recommendation?: string 
 }
 
 export interface NutritionalWarning {
