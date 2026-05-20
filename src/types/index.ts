@@ -50,13 +50,13 @@ export interface AdditiveAnalysis {
   code: string;
   name: string;
   description: string;
-  risk_level: 'low' | 'medium' | 'high'
-  healthConcerns: string[];
+  risk_level: 'low' | 'medium' | 'high';
+  health_concerns: string[];
   conditions: string[];
-  dailyLimit?: string;
+  daily_limit?: string;
   amount?: string;
-  yourRisk?: string;
-  matchedConditions?: string[];
+  your_risk?: string;
+  matched_conditions?: string[];
 }
 
 export interface PersonalizedRisk {
@@ -64,7 +64,7 @@ export interface PersonalizedRisk {
   severity: 'low' | 'medium' | 'high';
   explanation: string;
   source: string;
-  recommendation?: string 
+  recommendation?: string;
 }
 
 export interface NutritionalWarning {
@@ -76,16 +76,16 @@ export interface NutritionalWarning {
 }
 
 export interface HealthAnalysis {
-  overall_score: number
-  risk_level: 'green' | 'yellow' | 'red'
-  personalized_risks: PersonalizedRisk[]
-  additives_of_concern: AdditiveAnalysis[]
-  nutritional_warnings: string[]
-  safe_for_conditions: string[]
-  unsafe_for_conditions: string[]
-  summary: string
-  recommendations: string[]
-  daily_budget_impact?: any
+  overall_score: number;
+  risk_level: 'green' | 'yellow' | 'red';
+  personalized_risks: PersonalizedRisk[];
+  additives_of_concern: AdditiveAnalysis[];
+  nutritional_warnings: string[];
+  safe_for_conditions: string[];
+  unsafe_for_conditions: string[];
+  summary: string;
+  recommendations: string[];
+  daily_budget_impact?: any;
 }
 
 // User types
@@ -93,16 +93,16 @@ export interface UserHealthProfile {
   id: string;
   conditions: string[];
   allergies: string[];
-  dietaryRestrictions: string[];
+  dietary_restrictions: string[];
   age?: number;
   weight?: number;
   height?: number;
   gender?: 'male' | 'female' | 'other';
-  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
-  familyMembers?: FamilyMember[];
-  dailyBudgets?: DailyBudgets;
-  createdAt?: string;
-  updatedAt?: string;
+  activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  family_members?: FamilyMember[];
+  daily_budgets?: DailyBudgets;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface FamilyMember {
@@ -113,72 +113,72 @@ export interface FamilyMember {
   weight?: number;
   conditions: string[];
   allergies: string[];
-  isActive: boolean;
+  is_active: boolean;
 }
 
 export interface DailyBudgets {
-  sodiumMg: number;
-  sugarG: number;
-  saturatedFatG: number;
-  fiberG: number;
-  proteinG: number;
+  sodium_mg: number;
+  sugar_g: number;
+  saturated_fat_g: number;
+  fiber_g: number;
+  protein_g: number;
   calories: number;
-  customLimits: Record<string, number>;
+  custom_limits: Record<string, number>;
 }
 
 // Scan history types
 export interface ScanRecord {
   id: string;
-  userId: string;
+  user_id: string;
   barcode: string;
-  productName: string;
-  productImage?: string;
+  product_name: string;
+  product_image?: string;
   brand?: string;
-  healthScore: number;
-  riskLevel: 'green' | 'yellow' | 'red';
+  health_score: number;
+  risk_level: 'green' | 'yellow' | 'red';
   additives: AdditiveAnalysis[];
-  nutritionalWarnings: NutritionalWarning[];
-  servingSize?: string;
+  nutritional_warnings: NutritionalWarning[];
+  serving_size?: string;
   quantity?: string;
-  createdAt: string;
-  familyMemberId?: string;
+  created_at: string;
+  family_member_id?: string;
 }
 
 // Cumulative tracking types
 export interface ChemicalExposure {
   id: string;
-  userId: string;
-  familyMemberId?: string;
-  chemicalName: string;
-  chemicalCode: string;
-  amountMg: number;
-  logDate: string;
-  weekStart: string;
-  productName?: string;
+  user_id: string;
+  family_member_id?: string;
+  chemical_name: string;
+  chemical_code: string;
+  amount_mg: number;
+  log_date: string;
+  week_start: string;
+  product_name?: string;
 }
 
 export interface DailyLog {
   id: string;
-  userId: string;
-  familyMemberId?: string;
-  logDate: string;
-  sodiumMg: number;
-  sugarG: number;
-  saturatedFatG: number;
-  fiberG: number;
-  proteinG: number;
+  user_id: string;
+  family_member_id?: string;
+  log_date: string;
+  sodium_mg: number;
+  sugar_g: number;
+  saturated_fat_g: number;
+  fiber_g: number;
+  protein_g: number;
   calories: number;
-  additiveExposure: Record<string, number>;
+  additive_exposure: Record<string, number>;
 }
 
 export interface WeeklySummary {
-  weekStart: string;
-  weekEnd: string;
-  totalScans: number;
-  averageScore: number;
-  chemicalExposures: ChemicalExposure[];
-  dailyLogs: DailyLog[];
-  budgetStatus: BudgetStatus[];
+  week_start: string;
+  week_end: string;
+  total_scans: number;
+  average_score: number;
+  chemical_exposures: ChemicalExposure[];
+  daily_logs: DailyLog[];
+  budget_status: BudgetStatus[];
 }
 
 export interface BudgetStatus {
@@ -191,15 +191,15 @@ export interface BudgetStatus {
 
 // Alternative product types
 export interface AlternativeProduct {
-  code: string
-  product_name: string
-  brands?: string
-  image_url?: string
-  health_score?: number
-  risk_level?: string
-  additives?: string[]
-  categories?: string
-  nutrition_grades?: string
+  code: string;
+  product_name: string;
+  brands?: string;
+  image_url?: string;
+  health_score?: number;
+  risk_level?: string;
+  additives?: string[];
+  categories?: string;
+  nutrition_grades?: string;
 }
 
 // Challenge types
@@ -208,12 +208,12 @@ export interface Challenge {
   title: string;
   description: string;
   type: 'clean_label' | 'sugar_detox' | 'additive_free' | 'custom';
-  duration: number; // days
+  duration: number;
   rules: ChallengeRule[];
   reward: string;
   participants: number;
-  startDate?: string;
-  endDate?: string;
+  start_date?: string;
+  end_date?: string;
   status: 'active' | 'completed' | 'failed';
   progress: number;
 }
@@ -233,9 +233,9 @@ export interface Toast {
 }
 
 export interface AppState {
-  currentUser: UserHealthProfile | null;
-  activeFamilyMember: string;
-  recentScans: ScanRecord[];
+  current_user: UserHealthProfile | null;
+  active_family_member: string;
+  recent_scans: ScanRecord[];
   toasts: Toast[];
-  isLoading: boolean;
+  is_loading: boolean;
 }
