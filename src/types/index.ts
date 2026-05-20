@@ -77,13 +77,14 @@ export interface NutritionalWarning {
 export interface HealthAnalysis {
   overall_score: number
   risk_level: 'green' | 'yellow' | 'red'
-  personalizedRisks: PersonalizedRisk[];
-  additivesOfConcern: AdditiveAnalysis[];
-  nutritionalWarnings: NutritionalWarning[];
-  safeForConditions: string[];
-  unsafeForConditions: string[];
-  summary: string;
-  recommendations: string[];
+  personalized_risks: PersonalizedRisk[]
+  additives_of_concern: AdditiveAnalysis[]
+  nutritional_warnings: string[]
+  safe_for_conditions: string[]
+  unsafe_for_conditions: string[]
+  summary: string
+  recommendations: string[]
+  daily_budget_impact?: any
 }
 
 // User types
