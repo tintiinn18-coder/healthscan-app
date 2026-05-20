@@ -98,7 +98,7 @@ export const ADDITIVE_DATABASE: Record<string, AdditiveInfo> = {
     conditions_affected: ['diabetes', 'digestive_issues', 'bladder_issues'],
     daily_limit: '5 mg per kg of body weight (FDA)',
     category: 'sweetener',
-    aliases: ['saccharin', 'Sweet'N Low', 'E954'],
+    aliases: ['saccharin', "Sweet'N Low", 'E954'],
     banned_in: ['Canada (in certain products)', 'Some EU restrictions'],
     acceptable_in: ['USA', 'Most countries'],
     long_term_effects: [
