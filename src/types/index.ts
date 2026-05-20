@@ -34,6 +34,7 @@ export interface OFFProduct {
   manufacturing_places?: string;
   stores?: string;
   countries_tags?: string[];
+  nutriscore_grade?: string;
 }
 
 export interface OFFSearchResponse {
