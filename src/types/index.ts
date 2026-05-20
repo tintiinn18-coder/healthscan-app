@@ -76,7 +76,7 @@ export interface NutritionalWarning {
 
 export interface HealthAnalysis {
   overall_score: number
-  riskLevel: 'green' | 'yellow' | 'red';
+  risk_level: 'green' | 'yellow' | 'red'
   personalizedRisks: PersonalizedRisk[];
   additivesOfConcern: AdditiveAnalysis[];
   nutritionalWarnings: NutritionalWarning[];
