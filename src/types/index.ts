@@ -6,6 +6,7 @@ export interface ScannedProduct {
   health_score: number
   risk_level: 'green' | 'yellow' | 'red'
   created_at: string
+  brands?: string 
 }
 
 // Product types from Open Food Facts
