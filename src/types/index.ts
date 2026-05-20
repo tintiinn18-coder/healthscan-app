@@ -197,6 +197,7 @@ export interface AlternativeProduct {
   risk_level?: string
   additives?: string[]
   categories?: string
+  nutrition_grades?: string
 }
 
 // Challenge types
