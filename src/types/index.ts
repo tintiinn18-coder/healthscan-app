@@ -1,3 +1,13 @@
+export interface ScannedProduct {
+  id: string
+  barcode: string
+  product_name: string
+  product_image?: string
+  health_score: number
+  risk_level: 'green' | 'yellow' | 'red'
+  created_at: string
+}
+
 // Product types from Open Food Facts
 export interface OFFProduct {
   code: string;
