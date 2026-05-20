@@ -49,7 +49,7 @@ export interface OFFSearchResponse {
 export interface AdditiveAnalysis {
   code: string;
   name: string;
-  description: string;
+  explanation: string;  // CHANGED FROM description
   risk_level: 'low' | 'medium' | 'high';
   health_concerns: string[];
   conditions: string[];
