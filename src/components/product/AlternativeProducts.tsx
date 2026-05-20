@@ -91,12 +91,12 @@ export function AlternativeProducts({ category, excludeBrands }: AlternativeProd
                   )}
                 </div>
                 <p className="text-sm text-gray-500">{alt.brands}</p>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className={`text-sm font-bold ${
-                    alt.health_score >= 80 ? 'text-green-600' :
-                    alt.health_score >= 60 ? 'text-yellow-600' : 'text-orange-600'
-                  }`}>
-                    {alt.health_score}/100
+               <div className="flex items-center gap-3 mt-1">
+  <span className={`text-sm font-bold ${
+    alt.health_score && alt.health_score >= 80 ? 'text-green-600' :
+    alt.health_score && alt.health_score >= 60 ? 'text-yellow-600' : 'text-orange-600'
+  }`}>
+    {alt.health_score || 0}/100
                   </span>
                   {alt.nutrition_grades && (
                     <Badge variant="gray" size="sm">Nutri-Score {alt.nutrition_grades.toUpperCase()}</Badge>
