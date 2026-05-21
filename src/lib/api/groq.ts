@@ -88,7 +88,7 @@ Rules:
         summary: parsed.summary,
         recommendations: parsed.recommendations,
         // Map AI concerns to our format
-        personalizedRisks: parsed.concerns?.map((c: any) => ({
+        personalized_risks: parsed.concerns?.map((c: any) => ({
           condition: c.relevantConditions?.[0] || 'general',
           severity: c.risk,
           explanation: `${c.ingredient}: ${c.explanation}`,
