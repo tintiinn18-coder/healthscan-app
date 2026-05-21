@@ -1,20 +1,5 @@
-export interface ScannedProduct {
-  id?: string
-  user_id: string
-  barcode: string
-  product_name: string
-  product_image?: string
-  health_score: number
-  risk_level: 'green' | 'yellow' | 'red'
-  created_at?: string
-  brands?: string
-  additives?: any[]
-  nutritional_warnings?: string[]
-  personalized_risks?: any[]
-  daily_budget_impact?: any
-}
+// ─── Product types (Open Food Facts) ────────────────────────────────────────
 
-// Product types from Open Food Facts
 export interface OFFProduct {
   code: string;
   product_name: string;
@@ -39,6 +24,9 @@ export interface OFFProduct {
   stores?: string;
   countries_tags?: string[];
   nutriscore_grade?: string;
+  origins?: string;
+  countries?: string;
+  lang?: string;
 }
 
 export interface OFFSearchResponse {
@@ -49,19 +37,38 @@ export interface OFFSearchResponse {
   page_size: number;
 }
 
-// Health analysis types
+// ─── Additive & ingredient analysis ─────────────────────────────────────────
+
 export interface AdditiveAnalysis {
   code: string;
   name: string;
-  explanation: string;  // CHANGED FROM description
+  explanation: string;
   risk_level: 'low' | 'medium' | 'high';
   health_concerns: string[];
-  conditions: string[];
+  /** Unified field — used across healthAnalyzer, product cards, etc. */
+  conditions_affected: string[];
   daily_limit?: string;
   amount?: string;
   your_risk?: string;
   matched_conditions?: string[];
 }
+
+export interface IngredientBreakdown {
+  name: string;
+  category: 'natural' | 'additive' | 'preservative' | 'sweetener' | 'color' | 'emulsifier' | 'unknown';
+  description: string;
+  safety_rating: 'safe' | 'caution' | 'avoid';
+}
+
+export interface DailyBudgetImpact {
+  sodium_mg: number;
+  sugar_g: number;
+  saturated_fat_g: number;
+  additives_count: number;
+  ultra_processed_score: number;
+}
+
+// ─── Health analysis ─────────────────────────────────────────────────────────
 
 export interface PersonalizedRisk {
   condition: string;
@@ -89,30 +96,37 @@ export interface HealthAnalysis {
   unsafe_for_conditions: string[];
   summary: string;
   recommendations: string[];
-  daily_budget_impact?: any;
+  ingredient_breakdown?: IngredientBreakdown[];
+  daily_budget_impact?: DailyBudgetImpact;
 }
 
-// User types
-export interface UserHealthProfile {
+// ─── User & profile ──────────────────────────────────────────────────────────
+
+export interface HealthCondition {
   id: string;
-  conditions: string[];
-  allergies: string[];
-  dietary_restrictions: string[];
-  age?: number;
-  weight?: number;
-  height?: number;
-  gender?: 'male' | 'female' | 'other';
-  activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
-  family_members?: FamilyMember[];
-  daily_budgets?: DailyBudgets;
-  created_at?: string;
-  updated_at?: string;
+  name: string;
+  severity: 'managed' | 'monitored' | 'critical';
+  diagnosed_date?: string;
+  notes?: string;
 }
+
+export type DietaryRestriction =
+  | 'vegetarian'
+  | 'vegan'
+  | 'gluten_free'
+  | 'dairy_free'
+  | 'kosher'
+  | 'halal'
+  | 'keto'
+  | 'paleo'
+  | 'low_fodmap'
+  | 'none';
 
 export interface FamilyMember {
   id: string;
   name: string;
   relation: 'self' | 'child' | 'spouse' | 'parent' | 'pet';
+  relationship?: string;
   age?: number;
   weight?: number;
   conditions: string[];
@@ -127,10 +141,45 @@ export interface DailyBudgets {
   fiber_g: number;
   protein_g: number;
   calories: number;
+  caffeine_mg?: number;
+  alcohol_g?: number;
   custom_limits: Record<string, number>;
 }
 
-// Scan history types
+export interface UserHealthProfile {
+  id?: string;
+  user_id?: string;
+  /** Simple string conditions (used in analysis engine) */
+  conditions: string[];
+  allergies: string[];
+  dietary_restrictions: string[];
+  age?: number;
+  weight?: number;
+  height?: number;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  family_members?: FamilyMember[];
+  daily_budgets?: DailyBudgets;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ─── Scan history ────────────────────────────────────────────────────────────
+
+export interface ScannedProduct {
+  id?: string;
+  user_id?: string;
+  barcode: string;
+  product_name: string;
+  product_image?: string;
+  brands?: string;
+  health_score: number;
+  risk_level: 'green' | 'yellow' | 'red';
+  additives?: AdditiveAnalysis[];
+  nutritional_warnings?: string[];
+  created_at?: string;
+}
+
 export interface ScanRecord {
   id: string;
   user_id: string;
@@ -148,22 +197,25 @@ export interface ScanRecord {
   family_member_id?: string;
 }
 
-// Cumulative tracking types
+// ─── Cumulative tracking ─────────────────────────────────────────────────────
+
 export interface ChemicalExposure {
-  id: string;
+  id?: string;
   user_id: string;
   family_member_id?: string;
   chemical_name: string;
   chemical_code: string;
   amount_mg: number;
-  log_date: string;
+  log_date?: string;
   week_start: string;
   product_name?: string;
-  warning_triggered?: boolean; 
+  source_products?: string[];
+  warning_triggered?: boolean;
+  created_at?: string;
 }
 
 export interface DailyLog {
-  id: string;
+  id?: string;
   user_id: string;
   family_member_id?: string;
   log_date: string;
@@ -173,7 +225,11 @@ export interface DailyLog {
   fiber_g: number;
   protein_g: number;
   calories: number;
-  additive_exposure: Record<string, number>;
+  additive_exposure?: Record<string, number>;
+  additives_count?: number;
+  ultra_processed_score?: number;
+  scan_count?: number;
+  created_at?: string;
 }
 
 export interface WeeklySummary {
@@ -194,7 +250,8 @@ export interface BudgetStatus {
   status: 'under' | 'near' | 'over';
 }
 
-// Alternative product types
+// ─── Alternatives ────────────────────────────────────────────────────────────
+
 export interface AlternativeProduct {
   code: string;
   product_name: string;
@@ -205,31 +262,12 @@ export interface AlternativeProduct {
   additives?: string[];
   categories?: string;
   nutrition_grades?: string;
+  price_estimate?: string;
+  availability?: string;
 }
 
-// Challenge types
-export interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  type: 'clean_label' | 'sugar_detox' | 'additive_free' | 'custom';
-  duration: number;
-  rules: ChallengeRule[];
-  reward: string;
-  participants: number;
-  start_date?: string;
-  end_date?: string;
-  status: 'active' | 'completed' | 'failed';
-  progress: number;
-}
+// ─── UI / App state ──────────────────────────────────────────────────────────
 
-export interface ChallengeRule {
-  type: 'no_additives' | 'max_sugar' | 'max_sodium' | 'min_score' | 'custom';
-  value: number;
-  description: string;
-}
-
-// UI types
 export interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';

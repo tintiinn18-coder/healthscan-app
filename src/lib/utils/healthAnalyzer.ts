@@ -73,12 +73,20 @@ const SCORE_WEIGHTS = {
   protein_bonus: 2
 }
 
+// IngredientBreakdown category includes additive categories from the DB
+// Map them to our IngredientBreakdown category union
+type IngredientCategory = IngredientBreakdown['category']
+
+function mapToIngredientCategory(cat: string): IngredientCategory {
+  const allowed: IngredientCategory[] = ['natural', 'additive', 'preservative', 'sweetener', 'color', 'emulsifier', 'unknown']
+  return (allowed.includes(cat as IngredientCategory) ? cat : 'additive') as IngredientCategory
+}
+
 export function analyzeProduct(
   product: OFFProduct,
   userProfile: UserHealthProfile | null
 ): HealthAnalysis {
   const additives = product.additives_tags || []
-  const ingredientText = product.ingredients_text || ''
   const nutriments = product.nutriments || {}
   const allergens = product.allergens_tags || []
   const categories = product.categories_tags || []
@@ -89,7 +97,8 @@ export function analyzeProduct(
   const nutritionalWarnings: string[] = []
   const ingredientBreakdown: IngredientBreakdown[] = []
   const unsafeConditions = new Set<string>()
-  const safeConditions = new Set<string>(userProfile?.conditions?.map(c => c.id) || [])
+  // conditions is now string[] — use directly
+  const safeConditions = new Set<string>(userProfile?.conditions || [])
 
   // Track daily budget impact
   const budgetImpact: DailyBudgetImpact = {
@@ -116,29 +125,32 @@ export function analyzeProduct(
         conditions_affected: info.conditions_affected
       }
 
-      // Check against user conditions
-      if (userProfile?.conditions) {
-        const matchingConditions = info.conditions_affected.filter(condition => {
-          const normalizedUserConditions = userProfile.conditions.map(c => normalizeCondition(c.id))
-          return normalizedUserConditions.includes(condition)
-        })
+      // Check against user conditions (conditions is string[])
+      if (userProfile?.conditions && userProfile.conditions.length > 0) {
+        const normalizedUserConditions = userProfile.conditions.map(c => normalizeCondition(c))
+
+        const matchingConditions = info.conditions_affected.filter(condition =>
+          normalizedUserConditions.includes(condition)
+        )
 
         if (matchingConditions.length > 0) {
-          const conditionNames = matchingConditions.map(c => 
-            userProfile.conditions.find(uc => normalizeCondition(uc.id) === c)?.name || c
-          )
+          const conditionNames = matchingConditions.map(c => {
+            const original = userProfile.conditions.find(uc => normalizeCondition(uc) === c)
+            return original || c
+          })
 
           analysis.your_risk = `⚠️ HIGH RISK for your conditions: ${conditionNames.join(', ')}`
+          analysis.matched_conditions = conditionNames
 
           matchingConditions.forEach(c => {
             unsafeConditions.add(c)
-            const userCondition = userProfile.conditions.find(uc => normalizeCondition(uc.id) === c)
-            if (userCondition) safeConditions.delete(userCondition.id)
+            const originalCondition = userProfile.conditions.find(uc => normalizeCondition(uc) === c)
+            if (originalCondition) safeConditions.delete(originalCondition)
 
             personalizedRisks.push({
-              condition: userCondition?.name || c,
+              condition: originalCondition || c,
               severity: info.risk_level,
-              explanation: `${info.name} (${info.code}) is flagged for ${userCondition?.name || c}: ${info.health_concerns[0]}`,
+              explanation: `${info.name} (${info.code}) is flagged for ${originalCondition || c}: ${info.health_concerns[0]}`,
               source: 'EFSA/JECFA/IARC Safety Assessments',
               recommendation: getRecommendationForCondition(c, info.code)
             })
@@ -156,7 +168,7 @@ export function analyzeProduct(
       // Add to ingredient breakdown
       ingredientBreakdown.push({
         name: info.name,
-        category: info.category,
+        category: mapToIngredientCategory(info.category),
         description: info.description,
         safety_rating: info.risk_level === 'high' ? 'avoid' : info.risk_level === 'medium' ? 'caution' : 'safe'
       })
@@ -179,7 +191,7 @@ export function analyzeProduct(
     allergens.forEach((allergen: string) => {
       const normalizedAllergen = allergen.replace('en:', '').toLowerCase()
       userProfile.allergies.forEach(userAllergy => {
-        if (normalizedAllergen.includes(userAllergy.toLowerCase()) || 
+        if (normalizedAllergen.includes(userAllergy.toLowerCase()) ||
             userAllergy.toLowerCase().includes(normalizedAllergen)) {
           score += SCORE_WEIGHTS.allergen_match
           nutritionalWarnings.push(`🚨 ALLERGEN ALERT: Contains ${normalizedAllergen} - you listed ${userAllergy} as an allergy`)
@@ -220,13 +232,45 @@ export function analyzeProduct(
     nutritional_warnings: nutritionalWarnings,
     safe_for_conditions: Array.from(safeConditions),
     unsafe_for_conditions: Array.from(unsafeConditions),
+    summary: generateSummary(riskLevel, additivesOfConcern.length, personalizedRisks.length),
+    recommendations: generateRecommendations(additivesOfConcern, nutritionalWarnings),
     ingredient_breakdown: ingredientBreakdown,
     daily_budget_impact: budgetImpact
   }
 }
 
+function generateSummary(
+  riskLevel: 'green' | 'yellow' | 'red',
+  additiveCount: number,
+  riskCount: number
+): string {
+  if (riskLevel === 'green') return `This product appears generally safe with ${additiveCount} additive(s) detected and no major health concerns identified.`
+  if (riskLevel === 'yellow') return `This product has ${additiveCount} additive(s) and ${riskCount} personalized risk(s). Moderate consumption is advised.`
+  return `This product poses significant concerns with ${additiveCount} additive(s) and ${riskCount} personalized risk(s). Consider alternatives.`
+}
+
+function generateRecommendations(
+  additives: AdditiveAnalysis[],
+  warnings: string[]
+): string[] {
+  const recs: string[] = []
+  if (additives.some(a => a.risk_level === 'high')) {
+    recs.push('Consider choosing a product with fewer high-risk additives.')
+  }
+  if (warnings.some(w => w.includes('SUGAR'))) {
+    recs.push('Look for lower-sugar alternatives or reduce portion size.')
+  }
+  if (warnings.some(w => w.includes('SODIUM'))) {
+    recs.push('Try "low sodium" or "no salt added" versions of this product.')
+  }
+  if (recs.length === 0) {
+    recs.push('Continue monitoring your intake as part of a balanced diet.')
+  }
+  return recs
+}
+
 function analyzeNutrition(
-  nutriments: any,
+  nutriments: Record<string, number>,
   userProfile: UserHealthProfile | null,
   currentScore: number,
   warnings: string[],
@@ -242,17 +286,23 @@ function analyzeNutrition(
     score += SCORE_WEIGHTS.high_sugar
     warnings.push(`🔴 HIGH SUGAR: ${sugar}g per 100g (WHO recommends <25g/day total)`)
 
-    if (userProfile?.conditions?.some(c => ['diabetes', 'prediabetes', 'gestational_diabetes'].includes(normalizeCondition(c.id)))) {
-      const condition = userProfile.conditions.find(c => ['diabetes', 'prediabetes', 'gestational_diabetes'].includes(normalizeCondition(c.id)))
+    const diabetesConditions = ['diabetes', 'prediabetes', 'gestational_diabetes']
+    const hasRelatedCondition = userProfile?.conditions?.some(c =>
+      diabetesConditions.includes(normalizeCondition(c))
+    )
+    if (hasRelatedCondition) {
+      const matchedCondition = userProfile!.conditions.find(c =>
+        diabetesConditions.includes(normalizeCondition(c))
+      )!
       risks.push({
-        condition: condition?.name || 'Diabetes',
+        condition: matchedCondition,
         severity: 'high',
         explanation: `This product contains ${sugar}g sugar per 100g. For diabetes management, aim for <5g per serving.`,
         source: 'American Diabetes Association',
         recommendation: 'Choose products with <5g sugar per serving. Consider sugar-free alternatives.'
       })
       unsafeConditions.add('diabetes')
-      safeConditions.delete(condition?.id || 'diabetes')
+      safeConditions.delete(matchedCondition)
     }
   } else if (sugar > 10) {
     score += SCORE_WEIGHTS.medium_sugar
@@ -260,22 +310,28 @@ function analyzeNutrition(
   }
 
   // Sodium analysis
-  const sodium = (nutriments.sodium_100g || 0) * 1000 // Convert to mg
+  const sodium = (nutriments.sodium_100g || 0) * 1000
   if (sodium > 600) {
     score += SCORE_WEIGHTS.high_sodium
     warnings.push(`🔴 HIGH SODIUM: ${Math.round(sodium)}mg per 100g (AHA recommends <2300mg/day)`)
 
-    if (userProfile?.conditions?.some(c => ['hypertension', 'cardiovascular', 'kidney_disease'].includes(normalizeCondition(c.id)))) {
-      const condition = userProfile.conditions.find(c => ['hypertension', 'cardiovascular', 'kidney_disease'].includes(normalizeCondition(c.id)))
+    const bpConditions = ['hypertension', 'cardiovascular', 'kidney_disease']
+    const hasRelatedCondition = userProfile?.conditions?.some(c =>
+      bpConditions.includes(normalizeCondition(c))
+    )
+    if (hasRelatedCondition) {
+      const matchedCondition = userProfile!.conditions.find(c =>
+        bpConditions.includes(normalizeCondition(c))
+      )!
       risks.push({
-        condition: condition?.name || 'Hypertension',
+        condition: matchedCondition,
         severity: 'high',
         explanation: `High sodium (${Math.round(sodium)}mg/100g) directly elevates blood pressure. AHA limit: 1500mg/day for your condition.`,
         source: 'American Heart Association',
         recommendation: 'Look for "low sodium" (<140mg/serving) or "no salt added" alternatives.'
       })
       unsafeConditions.add('hypertension')
-      safeConditions.delete(condition?.id || 'hypertension')
+      safeConditions.delete(matchedCondition)
     }
   } else if (sodium > 300) {
     score += SCORE_WEIGHTS.medium_sodium
@@ -288,7 +344,8 @@ function analyzeNutrition(
     score += SCORE_WEIGHTS.high_saturated_fat
     warnings.push(`🔴 HIGH SATURATED FAT: ${satFat}g per 100g (WHO recommends <10% of daily calories)`)
 
-    if (userProfile?.conditions?.some(c => ['cardiovascular', 'obesity', 'high_cholesterol'].includes(normalizeCondition(c.id)))) {
+    const cvConditions = ['cardiovascular', 'obesity', 'high_cholesterol']
+    if (userProfile?.conditions?.some(c => cvConditions.includes(normalizeCondition(c)))) {
       risks.push({
         condition: 'Cardiovascular Health',
         severity: 'medium',
@@ -300,10 +357,10 @@ function analyzeNutrition(
   }
 
   // Ultra-processed indicators
-  const ingredients = (nutriments.ingredients_text || '').split(/[,;]/).length
-  if (ingredients > 15) {
+  const ingredientCount = (String(nutriments.ingredients_text || '')).split(/[,;]/).length
+  if (ingredientCount > 15) {
     score += SCORE_WEIGHTS.high_ultra_processed
-    warnings.push(`⚠️ ULTRA-PROCESSED: ${ingredients} ingredients detected. NOVA classification suggests limiting ultra-processed foods.`)
+    warnings.push(`⚠️ ULTRA-PROCESSED: ${ingredientCount} ingredients detected. NOVA classification suggests limiting ultra-processed foods.`)
   }
 
   return score
@@ -314,7 +371,6 @@ function calculateUltraProcessedScore(product: OFFProduct): number {
   const additives = product.additives_tags || []
   const ingredients = (product.ingredients_text || '').split(/[,;]/).length
 
-  // NOVA classification indicators
   if (additives.length > 5) score += 30
   else if (additives.length > 2) score += 15
 
@@ -333,7 +389,6 @@ function checkDietaryRestrictions(
   warnings: string[],
   unsafeConditions: Set<string>
 ): number {
-  const categories = product.categories_tags || []
   const labels = product.labels_tags || []
   const ingredients = product.ingredients_text?.toLowerCase() || ''
 
@@ -357,7 +412,7 @@ function checkDietaryRestrictions(
         }
         break
       case 'gluten_free':
-        if (!labels.includes('en:gluten-free') && (ingredients.includes('wheat') || ingredients.includes('barley') || 
+        if (!labels.includes('en:gluten-free') && (ingredients.includes('wheat') || ingredients.includes('barley') ||
             ingredients.includes('rye') || ingredients.includes('malt') || ingredients.includes('gluten'))) {
           score += SCORE_WEIGHTS.dietary_violation
           warnings.push(`🚫 CONTAINS GLUTEN: Not safe for celiac disease or gluten sensitivity`)

@@ -1,7 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { BarcodeScanner } from '@/components/scan/BarcodeScanner'
+import dynamic from 'next/dynamic'
+
+const BarcodeScanner = dynamic(
+  () => import('@/components/scan/BarcodeScanner').then(m => m.BarcodeScanner),
+  { ssr: false }
+)
 import { ScanResult } from '@/components/scan/ScanResult'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'

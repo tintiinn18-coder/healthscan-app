@@ -49,28 +49,27 @@ export function calculateWeeklyStats(
     return expDate.getTime() === weekStart.getTime()
   })
 
-  const totalScans = weekLogs.reduce((sum, log) => sum + log.scan_count, 0)
-  const avgScore = weekLogs.length > 0 
-    ? weekLogs.reduce((sum, log) => sum + (100 - log.ultra_processed_score), 0) / weekLogs.length 
+  const totalScans = weekLogs.reduce((sum, log) => sum + (log.scan_count ?? 0), 0)
+  const avgScore = weekLogs.length > 0
+    ? weekLogs.reduce((sum, log) => sum + (100 - (log.ultra_processed_score ?? 0)), 0) / weekLogs.length
     : 0
 
   const riskDist = { green: 0, yellow: 0, red: 0 }
-  // This would come from scan history in real implementation
 
   const totalSodium = weekLogs.reduce((sum, log) => sum + log.sodium_mg, 0)
   const totalSugar = weekLogs.reduce((sum, log) => sum + log.sugar_g, 0)
   const totalSatFat = weekLogs.reduce((sum, log) => sum + log.saturated_fat_g, 0)
-  const totalAdditives = weekLogs.reduce((sum, log) => sum + log.additives_count, 0)
+  const totalAdditives = weekLogs.reduce((sum, log) => sum + (log.additives_count ?? 0), 0)
 
-  const uniqueChems = [...new Set(weekExposures.map(e => e.chemical_name))]
+  const uniqueChems = Array.from(new Set(weekExposures.map(e => e.chemical_name)))
 
-  // Calculate budget adherence
-  const budgets = userProfile.daily_budgets || {
+  const budgets = userProfile.daily_budgets ?? {
     sodium_mg: 2300,
     sugar_g: 50,
     saturated_fat_g: 20,
-    caffeine_mg: 400,
-    alcohol_g: 0,
+    fiber_g: 25,
+    protein_g: 50,
+    calories: 2000,
     custom_limits: {}
   }
 
@@ -95,7 +94,6 @@ export function calculateWeeklyStats(
     }
   }
 
-  // Generate insights
   const concerns: string[] = []
   const improvements: string[] = []
   const recommendations: string[] = []
@@ -154,7 +152,7 @@ export function calculateStreak(dailyLogs: DailyLog[]): StreakData {
     }
   }
 
-  const sorted = [...dailyLogs].sort((a, b) => 
+  const sorted = [...dailyLogs].sort((a, b) =>
     new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
   )
 
@@ -163,7 +161,6 @@ export function calculateStreak(dailyLogs: DailyLog[]): StreakData {
   let tempStreak = 0
   let lastDate: Date | null = null
 
-  // Calculate current streak (consecutive days with scans)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -172,7 +169,6 @@ export function calculateStreak(dailyLogs: DailyLog[]): StreakData {
     logDate.setHours(0, 0, 0, 0)
 
     if (!lastDate) {
-      // First entry
       const diffDays = Math.floor((today.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24))
       if (diffDays <= 1) {
         currentStreak = 1
@@ -197,8 +193,8 @@ export function calculateStreak(dailyLogs: DailyLog[]): StreakData {
   return {
     current_streak_days: currentStreak,
     longest_streak_days: longestStreak,
-    last_scan_date: sorted[0]?.log_date || null,
-    total_green_scans: 0, // Would need scan history
+    last_scan_date: sorted[0]?.log_date ?? null,
+    total_green_scans: 0,
     total_yellow_scans: 0,
     total_red_scans: 0
   }

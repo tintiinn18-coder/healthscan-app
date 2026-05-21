@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     // Get user profile if authenticated
     let userProfile = null
     if (userId) {
-      const supabase = createClient()
+      const supabase = await createClient()
       const { data } = await supabase
         .from('profiles')
         .select('*')

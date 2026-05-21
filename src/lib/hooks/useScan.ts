@@ -73,8 +73,6 @@ export function useScan() {
       risk_level: analysis.risk_level,
       additives: analysis.additives_of_concern,
       nutritional_warnings: analysis.nutritional_warnings,
-      personalized_risks: analysis.personalized_risks,
-      daily_budget_impact: analysis.daily_budget_impact
     }
 
     await supabase.from('scans').insert(scan)
@@ -83,6 +81,9 @@ export function useScan() {
   const updateDailyLog = async (userId: string, analysis: HealthAnalysis) => {
     const today = new Date().toISOString().split('T')[0]
     const impact = analysis.daily_budget_impact
+
+    // If no budget impact data, skip
+    if (!impact) return
 
     const { data: existing } = await supabase
       .from('daily_logs')
@@ -93,12 +94,12 @@ export function useScan() {
 
     if (existing) {
       await supabase.from('daily_logs').update({
-        sodium_mg: existing.sodium_mg + impact.sodium_mg,
-        sugar_g: existing.sugar_g + impact.sugar_g,
-        saturated_fat_g: existing.saturated_fat_g + impact.saturated_fat_g,
-        additives_count: existing.additives_count + impact.additives_count,
-        ultra_processed_score: Math.max(existing.ultra_processed_score, impact.ultra_processed_score),
-        scan_count: existing.scan_count + 1
+        sodium_mg: (existing.sodium_mg || 0) + impact.sodium_mg,
+        sugar_g: (existing.sugar_g || 0) + impact.sugar_g,
+        saturated_fat_g: (existing.saturated_fat_g || 0) + impact.saturated_fat_g,
+        additives_count: (existing.additives_count || 0) + impact.additives_count,
+        ultra_processed_score: Math.max(existing.ultra_processed_score || 0, impact.ultra_processed_score),
+        scan_count: (existing.scan_count || 0) + 1
       }).eq('id', existing.id)
     } else {
       await supabase.from('daily_logs').insert({
@@ -130,8 +131,8 @@ export function useScan() {
 
       if (existing) {
         await supabase.from('chemical_exposure').update({
-          amount_mg: existing.amount_mg + 100, // Estimated
-          source_products: [...existing.source_products, product.product_name || 'Unknown']
+          amount_mg: (existing.amount_mg || 0) + 100,
+          source_products: [...(existing.source_products || []), product.product_name || 'Unknown']
         }).eq('id', existing.id)
       } else {
         await supabase.from('chemical_exposure').insert({

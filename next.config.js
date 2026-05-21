@@ -6,7 +6,11 @@ const nextConfig = {
     }
   },
   images: {
-    domains: ['images.openfoodfacts.org', 'world.openfoodfacts.org', 'static.openfoodfacts.org']
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.openfoodfacts.org' },
+      { protocol: 'https', hostname: 'world.openfoodfacts.org' },
+      { protocol: 'https', hostname: 'static.openfoodfacts.org' },
+    ]
   },
   async headers() {
     return [

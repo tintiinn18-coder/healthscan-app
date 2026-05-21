@@ -22,7 +22,7 @@ export function Badge({ children, variant = 'gray', size = 'sm' }: BadgeProps) {
 
   return (
     <span className={cn(
-      'inline-flex items-center rounded-lg border font-medium',
+      'inline-flex items-center rounded-full border font-medium',
       variants[variant],
       sizes[size]
     )}>
