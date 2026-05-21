@@ -155,6 +155,7 @@ export interface ChemicalExposure {
   log_date: string;
   week_start: string;
   product_name?: string;
+  warning_triggered?: boolean; 
 }
 
 export interface DailyLog {
