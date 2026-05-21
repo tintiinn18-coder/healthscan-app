@@ -1,12 +1,12 @@
 export interface ScannedProduct {
-  id: string
+  id?: string
   user_id: string
   barcode: string
   product_name: string
   product_image?: string
   health_score: number
   risk_level: 'green' | 'yellow' | 'red'
-  created_at: string
+  created_at?: string
   brands?: string
   additives?: any[]
   nutritional_warnings?: string[]
