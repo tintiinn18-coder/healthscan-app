@@ -9,6 +9,9 @@ export interface ScannedProduct {
   created_at: string
   brands?: string
   additives?: any[]
+  nutritional_warnings?: string[]
+  personalized_risks?: any[]
+  daily_budget_impact?: any
 }
 
 // Product types from Open Food Facts
