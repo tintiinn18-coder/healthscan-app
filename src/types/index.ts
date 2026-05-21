@@ -1,5 +1,6 @@
 export interface ScannedProduct {
   id: string
+  user_id: string
   barcode: string
   product_name: string
   product_image?: string
