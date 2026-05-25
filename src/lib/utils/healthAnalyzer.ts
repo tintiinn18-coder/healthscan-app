@@ -1,522 +1,482 @@
-import { ADDITIVE_DATABASE, getAdditiveInfo } from './additiveDatabase'
-import type { 
-  OFFProduct, 
-  HealthAnalysis, 
-  PersonalizedRisk, 
-  AdditiveAnalysis, 
+import { getAdditiveInfo } from './additiveDatabase'
+import type {
+  OFFProduct,
+  HealthAnalysis,
+  PersonalizedRisk,
+  AdditiveAnalysis,
   IngredientBreakdown,
   DailyBudgetImpact,
-  UserHealthProfile 
+  UserHealthProfile
 } from '@/types'
 
-// Condition mapping for additive matching
-const CONDITION_MAP: Record<string, string[]> = {
-  'diabetes': ['diabetes', 'type_1_diabetes', 'type_2_diabetes', 'prediabetes', 'gestational_diabetes'],
-  'cancer_history': ['cancer', 'cancer_history', 'oncology', 'tumor_history', 'remission'],
-  'hypertension': ['hypertension', 'high_blood_pressure', 'bp', 'cardiovascular'],
-  'digestive_issues': ['ibs', 'crohns', 'ulcerative_colitis', 'gerd', 'digestive_issues', 'celiac', 'leaky_gut'],
-  'pregnancy': ['pregnancy', 'pregnant', 'breastfeeding', 'nursing', 'fertility'],
-  'infants': ['infant', 'baby', 'toddler', 'children_under_2'],
-  'adhd': ['adhd', 'add', 'attention_deficit', 'hyperactivity', 'behavioral_issues'],
-  'asthma': ['asthma', 'copd', 'respiratory', 'breathing_issues', 'allergic_asthma'],
-  'allergies': ['allergies', 'food_allergies', 'seasonal_allergies', 'anaphylaxis'],
-  'migraine': ['migraine', 'chronic_headaches', 'cluster_headaches'],
-  'thyroid_issues': ['hypothyroidism', 'hyperthyroidism', 'hashimotos', 'graves', 'goiter'],
-  'liver_issues': ['liver_disease', 'hepatitis', 'cirrhosis', 'fatty_liver', 'nafld'],
-  'kidney_issues': ['kidney_disease', 'ckd', 'renal', 'dialysis'],
-  'obesity': ['obesity', 'overweight', 'weight_management', 'metabolic_syndrome'],
-  'autoimmune': ['autoimmune', 'lupus', 'rheumatoid_arthritis', 'ms', 'hashimotos', 'psoriasis'],
-  'neurological_disorders': ['epilepsy', 'parkinsons', 'alzheimers', 'ms', 'neuropathy', 'seizures'],
-  'depression': ['depression', 'anxiety', 'bipolar', 'mood_disorders', 'mental_health'],
-  'phenylketonuria': ['pku', 'phenylketonuria'],
-  'sulfite_sensitivity': ['sulfite_sensitivity', 'sulfite_allergy'],
-  'aspirin_allergy': ['aspirin_allergy', 'salicylate_sensitivity'],
-  'inflammatory_conditions': ['inflammation', 'chronic_inflammation', 'arthritis', 'fibromyalgia'],
-  'hormone_disorders': ['pcos', 'endometriosis', 'hormone_imbalance', 'estrogen_dominance'],
-  'vegan': ['vegan', 'plant_based'],
-  'vegetarian': ['vegetarian', 'lacto_vegetarian', 'ovo_vegetarian'],
-  'gerd': ['gerd', 'acid_reflux', 'heartburn'],
-  'dental_erosion': ['dental_erosion', 'tooth_decay', 'enamel_loss'],
-  'kidney_stones_history': ['kidney_stones', 'renal_stones', 'nephrolithiasis'],
-  'ibs': ['ibs', 'irritable_bowel', 'spastic_colon'],
-  'metabolic_syndrome': ['metabolic_syndrome', 'insulin_resistance', 'prediabetes']
+// ─── NOVA classification ─────────────────────────────────────────────────────
+// NOVA 1 = unprocessed, 2 = culinary, 3 = processed, 4 = ultra-processed
+const NOVA_PENALTY: Record<number, number> = { 1: 0, 2: -5, 3: -20, 4: -40 }
+const NOVA_LABEL: Record<number, string> = {
+  1: 'Unprocessed food',
+  2: 'Culinary ingredient',
+  3: 'Processed food',
+  4: 'Ultra-processed food'
 }
 
-// Reverse mapping for quick lookup
-const REVERSE_CONDITION_MAP: Record<string, string> = {}
-Object.entries(CONDITION_MAP).forEach(([key, values]) => {
-  values.forEach(v => REVERSE_CONDITION_MAP[v] = key)
-})
-
-export function normalizeCondition(condition: string): string {
-  const normalized = condition.toLowerCase().replace(/[\s-]/g, '_')
-  return REVERSE_CONDITION_MAP[normalized] || normalized
+// ─── Category baseline scores ─────────────────────────────────────────────────
+function getCategoryBaseline(product: OFFProduct): number {
+  const cats = (product.categories_tags || []).join(' ').toLowerCase()
+  const name = (product.product_name || '').toLowerCase()
+  if (cats.includes('fresh') || cats.includes('vegetable') || cats.includes('fruit') || cats.includes('raw')) return 90
+  if (cats.includes('dairy') || cats.includes('milk') || cats.includes('yogurt') || cats.includes('cheese')) return 72
+  if (cats.includes('bread') || cats.includes('cereals') || cats.includes('oat')) return 65
+  if (cats.includes('instant') || name.includes('maggi') || name.includes('noodle') || cats.includes('ready-meal')) return 38
+  if (cats.includes('snack') || cats.includes('chips') || cats.includes('crisps') || cats.includes('namkeen') || cats.includes('bhujia')) return 42
+  if (cats.includes('soft-drink') || cats.includes('soda') || cats.includes('cola') || cats.includes('carbonated')) return 22
+  if (cats.includes('energy-drink') || cats.includes('energy drink')) return 18
+  if (cats.includes('chocolate') || cats.includes('candy') || cats.includes('confection') || cats.includes('sweet')) return 35
+  if (cats.includes('biscuit') || cats.includes('cookie') || cats.includes('cracker')) return 45
+  if (cats.includes('juice') && !cats.includes('sugar')) return 55
+  if (cats.includes('water') || cats.includes('mineral-water')) return 98
+  if (cats.includes('sauce') || cats.includes('condiment') || cats.includes('ketchup')) return 48
+  if (cats.includes('processed-meat') || cats.includes('sausage') || cats.includes('salami')) return 30
+  if (cats.includes('frozen') || cats.includes('deep-fried') || cats.includes('fried')) return 40
+  if (cats.includes('protein') || cats.includes('whey') || cats.includes('supplement')) return 60
+  return 62 // default
 }
 
-// Score calculation weights
-const SCORE_WEIGHTS = {
-  high_risk_additive: -20,
-  medium_risk_additive: -10,
-  low_risk_additive: -3,
-  high_sugar: -15,
-  medium_sugar: -8,
-  high_sodium: -15,
-  medium_sodium: -8,
-  high_saturated_fat: -12,
-  high_ultra_processed: -15,
-  allergen_match: -20,
-  dietary_violation: -15,
-  condition_risk: -10,
-  natural_bonus: 5,
-  organic_bonus: 5,
-  fiber_bonus: 3,
-  protein_bonus: 2
+// ─── Condition normalizer ────────────────────────────────────────────────────
+const CONDITION_ALIASES: Record<string, string[]> = {
+  diabetes: ['diabetes', 'type 1 diabetes', 'type 2 diabetes', 'prediabetes', 'diabetic', 'gestational diabetes'],
+  hypertension: ['hypertension', 'high blood pressure', 'high bp', 'cardiovascular'],
+  cancer_history: ['cancer', 'cancer history', 'oncology', 'tumor history'],
+  pcos: ['pcos', 'polycystic', 'pcod'],
+  thyroid_issues: ['thyroid', 'hypothyroidism', 'hyperthyroidism', 'hashimotos'],
+  pregnancy: ['pregnancy', 'pregnant', 'breastfeeding', 'nursing'],
+  adhd: ['adhd', 'add', 'attention deficit', 'hyperactivity'],
+  asthma: ['asthma', 'breathing issues', 'copd', 'respiratory'],
+  migraine: ['migraine', 'chronic headache'],
+  cholesterol: ['cholesterol', 'high cholesterol', 'hypercholesterolemia'],
+  kidney_issues: ['kidney', 'kidney disease', 'ckd', 'renal'],
+  liver_issues: ['liver', 'liver disease', 'hepatitis'],
+  ibs: ['ibs', 'irritable bowel', 'digestive issues', 'crohns'],
+  gluten_intolerance: ['gluten intolerance', 'celiac', 'gluten sensitivity'],
+  lactose_intolerance: ['lactose intolerance', 'dairy intolerance'],
+  obesity: ['obesity', 'overweight', 'weight management'],
+  autoimmune: ['autoimmune', 'lupus', 'rheumatoid'],
 }
 
-// IngredientBreakdown category includes additive categories from the DB
-// Map them to our IngredientBreakdown category union
+function normalizeConditions(raw: string[]): Set<string> {
+  const result = new Set<string>()
+  raw.forEach(r => {
+    const lower = r.toLowerCase().trim()
+    for (const [key, aliases] of Object.entries(CONDITION_ALIASES)) {
+      if (aliases.some(a => lower.includes(a))) result.add(key)
+    }
+    result.add(lower.replace(/\s+/g, '_'))
+  })
+  return result
+}
+
+// ─── Personalized thresholds ──────────────────────────────────────────────────
+function getPersonalizedLimits(conditions: Set<string>): {
+  sugar_g: number
+  sodium_mg: number
+  sat_fat_g: number
+  caffeine_mg: number
+} {
+  let sugar_g = 50
+  let sodium_mg = 2300
+  let sat_fat_g = 20
+  let caffeine_mg = 400
+
+  if (conditions.has('diabetes')) { sugar_g = 15; sodium_mg = 2000 }
+  if (conditions.has('hypertension') || conditions.has('cholesterol')) { sodium_mg = 1500; sat_fat_g = 13 }
+  if (conditions.has('kidney_issues')) { sodium_mg = 1500; sat_fat_g = 13 }
+  if (conditions.has('pregnancy')) { caffeine_mg = 200; sodium_mg = 2000 }
+  if (conditions.has('obesity')) { sugar_g = 25; sat_fat_g = 15 }
+  if (conditions.has('ibs')) { sodium_mg = 2000 }
+
+  return { sugar_g, sodium_mg, sat_fat_g, caffeine_mg }
+}
+
 type IngredientCategory = IngredientBreakdown['category']
-
 function mapToIngredientCategory(cat: string): IngredientCategory {
   const allowed: IngredientCategory[] = ['natural', 'additive', 'preservative', 'sweetener', 'color', 'emulsifier', 'unknown']
   return (allowed.includes(cat as IngredientCategory) ? cat : 'additive') as IngredientCategory
 }
 
-export function analyzeProduct(
-  product: OFFProduct,
-  userProfile: UserHealthProfile | null
-): HealthAnalysis {
-  const additives = product.additives_tags || []
+// ─── Main Analysis ────────────────────────────────────────────────────────────
+export function analyzeProduct(product: OFFProduct, userProfile: UserHealthProfile | null): HealthAnalysis {
   const nutriments = product.nutriments || {}
+  const additives = product.additives_tags || []
   const allergens = product.allergens_tags || []
-  const categories = product.categories_tags || []
 
-  let score = 100
+  const conditions = normalizeConditions(userProfile?.conditions || [])
+  const limits = getPersonalizedLimits(conditions)
+
+  // ── Start from category baseline ──────────────────────────────────────────
+  let score = getCategoryBaseline(product)
+  const scoreBreakdown: string[] = []
+
+  // ── NOVA penalty ──────────────────────────────────────────────────────────
+  const nova = product.nova_group
+  if (nova && NOVA_PENALTY[nova] !== undefined) {
+    const pen = NOVA_PENALTY[nova]
+    score += pen
+    if (pen < 0) scoreBreakdown.push(`${pen} pts: ${NOVA_LABEL[nova]} (NOVA ${nova})`)
+  }
+
   const personalizedRisks: PersonalizedRisk[] = []
   const additivesOfConcern: AdditiveAnalysis[] = []
   const nutritionalWarnings: string[] = []
   const ingredientBreakdown: IngredientBreakdown[] = []
   const unsafeConditions = new Set<string>()
-  // conditions is now string[] — use directly
   const safeConditions = new Set<string>(userProfile?.conditions || [])
 
-  // Track daily budget impact
-  const budgetImpact: DailyBudgetImpact = {
-    sodium_mg: Math.round((nutriments.sodium_100g || 0) * 1000),
-    sugar_g: Math.round(nutriments.sugars_100g || 0),
-    saturated_fat_g: Math.round(nutriments.saturated_fat_100g || 0),
-    additives_count: additives.length,
-    ultra_processed_score: calculateUltraProcessedScore(product)
+  // ── Nutrient scoring (realistic, personalized) ────────────────────────────
+  const sugar = nutriments.sugars_100g || 0
+  const sodium_mg = (nutriments.sodium_100g || 0) * 1000
+  const sat_fat = nutriments.saturated_fat_100g || 0
+  const trans_fat = nutriments['trans-fat_100g'] || 0
+  const fiber = nutriments.fiber_100g || 0
+  const protein = nutriments.proteins_100g || 0
+  const calories = nutriments['energy-kcal_100g'] || nutriments.energy_kcal_100g || 0
+
+  // Sugar — -1.5 pts per %DV (personalized limit)
+  if (sugar > 0) {
+    const pct = (sugar / limits.sugar_g) * 100
+    const pen = Math.round(pct * 1.5 * 0.4) // scaled to 100g portion
+    if (pen > 0) {
+      const capped = Math.min(pen, 30)
+      score -= capped
+      if (sugar > 5) {
+        const label = conditions.has('diabetes')
+          ? `🔴 HIGH SUGAR for Diabetes: ${sugar}g per 100g (your limit: ${limits.sugar_g}g/day)`
+          : sugar > 22.5
+          ? `🔴 HIGH SUGAR: ${sugar}g per 100g — ${Math.round(pct)}% of daily limit`
+          : `🟡 MODERATE SUGAR: ${sugar}g per 100g`
+        nutritionalWarnings.push(label)
+        scoreBreakdown.push(`-${capped} pts: Sugar (${sugar}g)`)
+      }
+      if (conditions.has('diabetes') && sugar > 5) {
+        unsafeConditions.add('diabetes')
+        safeConditions.delete('Diabetes')
+        personalizedRisks.push({
+          condition: 'Diabetes',
+          severity: sugar > 10 ? 'high' : 'medium',
+          explanation: `Contains ${sugar}g sugar per 100g. Your personalised daily limit is ${limits.sugar_g}g (standard is 50g). This single serving uses ${Math.round((sugar / limits.sugar_g) * 100)}% of your limit.`,
+          source: 'American Diabetes Association',
+          recommendation: 'Choose products with <5g sugar per serving. Look for "no added sugar" labels.'
+        })
+      }
+    }
   }
 
-  // Analyze each additive
+  // Sodium — -0.8 pts per %DV
+  if (sodium_mg > 0) {
+    const pct = (sodium_mg / limits.sodium_mg) * 100
+    const pen = Math.round(pct * 0.8 * 0.35)
+    if (pen > 0) {
+      const capped = Math.min(pen, 25)
+      score -= capped
+      if (sodium_mg > 300) {
+        const label = (conditions.has('hypertension') || conditions.has('cholesterol'))
+          ? `🔴 HIGH SODIUM for your condition: ${Math.round(sodium_mg)}mg (your limit: ${limits.sodium_mg}mg/day)`
+          : sodium_mg > 600
+          ? `🔴 HIGH SODIUM: ${Math.round(sodium_mg)}mg — ${Math.round(pct)}% of daily limit`
+          : `🟡 MODERATE SODIUM: ${Math.round(sodium_mg)}mg per 100g`
+        nutritionalWarnings.push(label)
+        scoreBreakdown.push(`-${capped} pts: Sodium (${Math.round(sodium_mg)}mg)`)
+      }
+      if ((conditions.has('hypertension') || conditions.has('cholesterol')) && sodium_mg > 300) {
+        unsafeConditions.add('hypertension')
+        personalizedRisks.push({
+          condition: 'Hypertension / Cholesterol',
+          severity: sodium_mg > 600 ? 'high' : 'medium',
+          explanation: `${Math.round(sodium_mg)}mg sodium per 100g. For your condition the AHA recommends max ${limits.sodium_mg}mg/day — this is ${Math.round(pct)}% of that.`,
+          source: 'American Heart Association',
+          recommendation: 'Look for "low sodium" or "no salt added" alternatives.'
+        })
+      }
+    }
+  }
+
+  // Saturated fat — -1.0 pts per %DV
+  if (sat_fat > 0) {
+    const pct = (sat_fat / limits.sat_fat_g) * 100
+    const pen = Math.round(pct * 0.9 * 0.3)
+    if (pen > 0) {
+      const capped = Math.min(pen, 20)
+      score -= capped
+      if (sat_fat > 3) {
+        nutritionalWarnings.push(
+          sat_fat > 5
+            ? `🔴 HIGH SATURATED FAT: ${sat_fat}g per 100g — ${Math.round(pct)}% of daily limit`
+            : `🟡 MODERATE SATURATED FAT: ${sat_fat}g per 100g`
+        )
+        scoreBreakdown.push(`-${capped} pts: Saturated fat (${sat_fat}g)`)
+      }
+    }
+  }
+
+  // Trans fat — -5 for any amount (zero tolerance)
+  if (trans_fat > 0.1) {
+    score -= 15
+    nutritionalWarnings.push(`🚨 TRANS FAT DETECTED: ${trans_fat}g — WHO recommends ZERO trans fat`)
+    scoreBreakdown.push('-15 pts: Trans fat detected')
+  }
+
+  // Calories penalty (high energy density snacks)
+  if (calories > 500) {
+    score -= 5
+    nutritionalWarnings.push(`⚠️ HIGH CALORIE DENSITY: ${Math.round(calories)} kcal per 100g`)
+    scoreBreakdown.push('-5 pts: High calorie density')
+  }
+
+  // Fiber bonus — +0.5 per %DV
+  if (fiber > 3) {
+    const bonus = Math.min(Math.round(fiber * 1.5), 8)
+    score += bonus
+    scoreBreakdown.push(`+${bonus} pts: Good fiber content (${fiber}g)`)
+  }
+
+  // Protein bonus
+  if (protein > 10) {
+    const bonus = Math.min(Math.round(protein * 0.5), 6)
+    score += bonus
+    scoreBreakdown.push(`+${bonus} pts: Good protein content (${protein}g)`)
+  }
+
+  // Organic / no-additive bonus
+  const labels = product.labels_tags || []
+  if (labels.some(l => l.includes('organic'))) {
+    score += 5
+    scoreBreakdown.push('+5 pts: Organic certified')
+  }
+
+  // ── Additive analysis ───────────────────────────────────────────────────────
   additives.forEach((tag: string) => {
     const info = getAdditiveInfo(tag)
-
     if (info) {
       const analysis: AdditiveAnalysis = {
         code: info.code,
         name: info.name,
-        amount: 'Amount not specified on label',
         risk_level: info.risk_level,
         explanation: info.description,
         health_concerns: info.health_concerns,
         daily_limit: info.daily_limit,
-        conditions_affected: info.conditions_affected
+        conditions_affected: info.conditions_affected,
+        amount: 'Amount not specified on label',
       }
 
-      // Check against user conditions (conditions is string[])
-      if (userProfile?.conditions && userProfile.conditions.length > 0) {
-        const normalizedUserConditions = userProfile.conditions.map(c => normalizeCondition(c))
-
-        const matchingConditions = info.conditions_affected.filter(condition =>
-          normalizedUserConditions.includes(condition)
-        )
-
-        if (matchingConditions.length > 0) {
-          const conditionNames = matchingConditions.map(c => {
-            const original = userProfile.conditions.find(uc => normalizeCondition(uc) === c)
-            return original || c
-          })
-
-          analysis.your_risk = `⚠️ HIGH RISK for your conditions: ${conditionNames.join(', ')}`
+      // Personalized matching
+      if (conditions.size > 0) {
+        const matchedConditions = info.conditions_affected.filter(c => {
+          return conditions.has(c) || Array.from(conditions).some(uc => c.includes(uc.split('_')[0]))
+        })
+        if (matchedConditions.length > 0) {
+          const conditionNames = matchedConditions.map(c =>
+            userProfile?.conditions.find(uc => uc.toLowerCase().replace(/\s/g, '_').includes(c.split('_')[0])) || c
+          )
+          analysis.your_risk = `⚠️ Risk for your condition: ${conditionNames.join(', ')}`
           analysis.matched_conditions = conditionNames
-
-          matchingConditions.forEach(c => {
-            unsafeConditions.add(c)
-            const originalCondition = userProfile.conditions.find(uc => normalizeCondition(uc) === c)
-            if (originalCondition) safeConditions.delete(originalCondition)
-
-            personalizedRisks.push({
-              condition: originalCondition || c,
-              severity: info.risk_level,
-              explanation: `${info.name} (${info.code}) is flagged for ${originalCondition || c}: ${info.health_concerns[0]}`,
-              source: 'EFSA/JECFA/IARC Safety Assessments',
-              recommendation: getRecommendationForCondition(c, info.code)
-            })
+          matchedConditions.forEach(c => unsafeConditions.add(c))
+          personalizedRisks.push({
+            condition: conditionNames[0],
+            severity: info.risk_level,
+            explanation: `${info.name} (${info.code}): ${info.health_concerns[0]}`,
+            source: 'EFSA / JECFA Safety Database',
+            recommendation: info.health_concerns.length > 1 ? `Consider products without ${info.name}.` : undefined
           })
         }
       }
 
-      // Score penalty
-      if (info.risk_level === 'high') score += SCORE_WEIGHTS.high_risk_additive
-      else if (info.risk_level === 'medium') score += SCORE_WEIGHTS.medium_risk_additive
-      else score += SCORE_WEIGHTS.low_risk_additive
+      if (info.risk_level === 'high') score -= 15
+      else if (info.risk_level === 'medium') score -= 7
+      else score -= 2
 
       additivesOfConcern.push(analysis)
-
-      // Add to ingredient breakdown
       ingredientBreakdown.push({
         name: info.name,
         category: mapToIngredientCategory(info.category),
         description: info.description,
         safety_rating: info.risk_level === 'high' ? 'avoid' : info.risk_level === 'medium' ? 'caution' : 'safe'
       })
-    } else {
-      // Unknown additive
-      ingredientBreakdown.push({
-        name: tag.replace('en:', '').toUpperCase(),
-        category: 'unknown',
-        description: 'This additive is not in our database. Consider researching it independently.',
-        safety_rating: 'caution'
-      })
     }
   })
 
-  // Nutritional analysis
-  analyzeNutrition(nutriments, userProfile, score, nutritionalWarnings, personalizedRisks, unsafeConditions, safeConditions)
-
-  // Allergen check
-  if (userProfile?.allergies && userProfile.allergies.length > 0) {
-    allergens.forEach((allergen: string) => {
-      const normalizedAllergen = allergen.replace('en:', '').toLowerCase()
-      userProfile.allergies.forEach(userAllergy => {
-        if (normalizedAllergen.includes(userAllergy.toLowerCase()) ||
-            userAllergy.toLowerCase().includes(normalizedAllergen)) {
-          score += SCORE_WEIGHTS.allergen_match
-          nutritionalWarnings.push(`🚨 ALLERGEN ALERT: Contains ${normalizedAllergen} - you listed ${userAllergy} as an allergy`)
-          unsafeConditions.add('allergies')
+  // ── Allergen check ───────────────────────────────────────────────────────────
+  const userAllergies = userProfile?.allergies || []
+  if (userAllergies.length > 0) {
+    allergens.forEach((tag: string) => {
+      const allergen = tag.replace('en:', '').toLowerCase()
+      userAllergies.forEach(ua => {
+        if (allergen.includes(ua.toLowerCase()) || ua.toLowerCase().includes(allergen)) {
+          score -= 25
+          nutritionalWarnings.push(`🚨 ALLERGEN ALERT: Contains ${allergen} — you listed ${ua} as an allergy`)
+          unsafeConditions.add('allergy')
         }
       })
     })
   }
 
-  // Dietary restriction check
-  if (userProfile?.dietary_restrictions) {
-    checkDietaryRestrictions(product, userProfile.dietary_restrictions, score, nutritionalWarnings, unsafeConditions)
+  // ── Condition-specific extra checks ──────────────────────────────────────────
+  const ingredients = (product.ingredients_text || '').toLowerCase()
+
+  // Pregnancy flags
+  if (conditions.has('pregnancy')) {
+    const flags: string[] = []
+    if (ingredients.includes('alcohol') || ingredients.includes('wine') || ingredients.includes('beer')) flags.push('Alcohol')
+    if (ingredients.includes('raw') && (ingredients.includes('fish') || ingredients.includes('meat'))) flags.push('Raw meat/fish')
+    if (ingredients.includes('liver') || ingredients.includes('pâté')) flags.push('Liver/Pâté (excess Vitamin A)')
+    const caffeine = nutriments.caffeine_100g || 0
+    if (caffeine > 2) flags.push(`High caffeine (${caffeine}mg)`)
+    if (flags.length > 0) {
+      score -= 20
+      personalizedRisks.push({
+        condition: 'Pregnancy',
+        severity: 'high',
+        explanation: `This product contains items flagged during pregnancy: ${flags.join(', ')}`,
+        source: 'NHS / WHO Pregnancy Nutrition Guidelines',
+        recommendation: 'Avoid during pregnancy. Consult your OB/GYN.'
+      })
+      unsafeConditions.add('pregnancy')
+    }
   }
 
-  // Organic/natural bonuses
-  if (product.labels_tags?.includes('en:organic') || product.labels_tags?.includes('en:eu-organic')) {
-    score += SCORE_WEIGHTS.organic_bonus
-  }
-  if (categories.some(c => c.includes('unprocessed') || c.includes('raw'))) {
-    score += SCORE_WEIGHTS.natural_bonus
+  // PCOS
+  if (conditions.has('pcos')) {
+    if (sugar > 10 || (nova && nova >= 4)) {
+      score -= 10
+      personalizedRisks.push({
+        condition: 'PCOS',
+        severity: sugar > 15 ? 'high' : 'medium',
+        explanation: `High sugar and ultra-processed foods worsen insulin resistance common in PCOS. Sugar: ${sugar}g`,
+        source: 'Endocrine Society PCOS Guidelines',
+        recommendation: 'Choose low-GI, high-fiber alternatives. Avoid refined carbs and added sugars.'
+      })
+      unsafeConditions.add('pcos')
+    }
   }
 
-  // Fiber bonus
-  if ((nutriments.fiber_100g || 0) > 3) {
-    score += SCORE_WEIGHTS.fiber_bonus
+  // Thyroid
+  if (conditions.has('thyroid_issues')) {
+    const hasSoy = ingredients.includes('soy') || ingredients.includes('tofu') || ingredients.includes('soybean')
+    if (hasSoy) {
+      score -= 8
+      personalizedRisks.push({
+        condition: 'Thyroid',
+        severity: 'medium',
+        explanation: 'Contains soy, which can interfere with thyroid hormone absorption if consumed in large amounts.',
+        source: 'Journal of Clinical Endocrinology & Metabolism',
+        recommendation: 'Avoid soy for at least 4 hours around thyroid medication. Moderate consumption otherwise.'
+      })
+      unsafeConditions.add('thyroid_issues')
+    }
   }
 
-  // Determine risk level
+  // Asthma / breathing
+  if (conditions.has('asthma')) {
+    const hasSulfites = additives.some(a => ['e220', 'e221', 'e222', 'e223', 'e224', 'e225', 'e226', 'e227', 'e228'].includes(a.replace('en:', '')))
+    const hasMsg = additives.some(a => a.includes('e621'))
+    if (hasSulfites || hasMsg) {
+      score -= 15
+      personalizedRisks.push({
+        condition: 'Asthma / Breathing',
+        severity: 'high',
+        explanation: `Contains ${hasSulfites ? 'sulfites (known asthma trigger)' : ''}${hasSulfites && hasMsg ? ' and ' : ''}${hasMsg ? 'MSG (can trigger asthma attacks in sensitive individuals)' : ''}.`,
+        source: 'British Thoracic Society',
+        recommendation: 'Avoid products with sulfites (E220-E228) and MSG (E621) if you have asthma.'
+      })
+      unsafeConditions.add('asthma')
+    }
+  }
+
+  // Gluten intolerance
+  if (conditions.has('gluten_intolerance')) {
+    const hasGluten = allergens.some(a => a.includes('gluten') || a.includes('wheat') || a.includes('barley') || a.includes('rye'))
+    if (hasGluten) {
+      score -= 30
+      nutritionalWarnings.push('🚨 CONTAINS GLUTEN — Not safe for celiac / gluten intolerance')
+      unsafeConditions.add('gluten_intolerance')
+    }
+  }
+
+  // Lactose intolerance
+  if (conditions.has('lactose_intolerance')) {
+    const hasDairy = allergens.some(a => a.includes('milk')) || ingredients.includes('lactose')
+    if (hasDairy) {
+      score -= 20
+      nutritionalWarnings.push('🚨 CONTAINS LACTOSE/DAIRY — May cause digestive discomfort')
+      unsafeConditions.add('lactose_intolerance')
+    }
+  }
+
+  // ── Final score clamping ──────────────────────────────────────────────────────
+  const finalScore = Math.max(0, Math.min(100, Math.round(score)))
+
   let riskLevel: 'green' | 'yellow' | 'red' = 'green'
-  if (score < 40 || unsafeConditions.size > 2) riskLevel = 'red'
-  else if (score < 70 || unsafeConditions.size > 0) riskLevel = 'yellow'
+  if (finalScore < 40 || unsafeConditions.size > 2) riskLevel = 'red'
+  else if (finalScore < 65 || unsafeConditions.size > 0) riskLevel = 'yellow'
+
+  const budgetImpact: DailyBudgetImpact = {
+    sodium_mg: Math.round(sodium_mg),
+    sugar_g: Math.round(sugar),
+    saturated_fat_g: Math.round(sat_fat),
+    additives_count: additives.length,
+    ultra_processed_score: nova === 4 ? 100 : nova === 3 ? 60 : nova === 2 ? 20 : 0
+  }
 
   return {
-    overall_score: Math.max(0, Math.min(100, Math.round(score))),
+    overall_score: finalScore,
     risk_level: riskLevel,
     personalized_risks: personalizedRisks,
     additives_of_concern: additivesOfConcern,
     nutritional_warnings: nutritionalWarnings,
-    safe_for_conditions: Array.from(safeConditions),
+    safe_for_conditions: Array.from(safeConditions).filter(c => !unsafeConditions.has(c.toLowerCase().replace(/\s/g, '_'))),
     unsafe_for_conditions: Array.from(unsafeConditions),
-    summary: generateSummary(riskLevel, additivesOfConcern.length, personalizedRisks.length),
-    recommendations: generateRecommendations(additivesOfConcern, nutritionalWarnings),
+    summary: generateSummary(finalScore, riskLevel, nova, scoreBreakdown, product.product_name || ''),
+    recommendations: generateRecommendations(additivesOfConcern, nutritionalWarnings, conditions),
     ingredient_breakdown: ingredientBreakdown,
     daily_budget_impact: budgetImpact
   }
 }
 
-function generateSummary(
-  riskLevel: 'green' | 'yellow' | 'red',
-  additiveCount: number,
-  riskCount: number
-): string {
-  if (riskLevel === 'green') return `This product appears generally safe with ${additiveCount} additive(s) detected and no major health concerns identified.`
-  if (riskLevel === 'yellow') return `This product has ${additiveCount} additive(s) and ${riskCount} personalized risk(s). Moderate consumption is advised.`
-  return `This product poses significant concerns with ${additiveCount} additive(s) and ${riskCount} personalized risk(s). Consider alternatives.`
+function generateSummary(score: number, risk: string, nova: number | undefined, breakdown: string[], name: string): string {
+  const novaNote = nova === 4 ? ' It is ultra-processed (NOVA 4).' : nova === 3 ? ' It is a processed food (NOVA 3).' : ''
+  if (risk === 'green') return `${name} scores ${score}/100.${novaNote} Generally acceptable for occasional consumption. ${breakdown.length > 0 ? 'Key factors: ' + breakdown.slice(0, 2).join(', ') : ''}`
+  if (risk === 'yellow') return `${name} scores ${score}/100.${novaNote} Moderate consumption recommended. ${breakdown.length > 0 ? 'Key deductions: ' + breakdown.slice(0, 3).join(', ') : ''}`
+  return `${name} scores ${score}/100.${novaNote} Significant health concerns found. ${breakdown.length > 0 ? 'Key issues: ' + breakdown.slice(0, 3).join(', ') : ''}`
 }
 
-function generateRecommendations(
-  additives: AdditiveAnalysis[],
-  warnings: string[]
-): string[] {
+function generateRecommendations(additives: AdditiveAnalysis[], warnings: string[], conditions: Set<string>): string[] {
   const recs: string[] = []
-  if (additives.some(a => a.risk_level === 'high')) {
-    recs.push('Consider choosing a product with fewer high-risk additives.')
-  }
-  if (warnings.some(w => w.includes('SUGAR'))) {
-    recs.push('Look for lower-sugar alternatives or reduce portion size.')
-  }
-  if (warnings.some(w => w.includes('SODIUM'))) {
-    recs.push('Try "low sodium" or "no salt added" versions of this product.')
-  }
-  if (recs.length === 0) {
-    recs.push('Continue monitoring your intake as part of a balanced diet.')
-  }
+  if (additives.some(a => a.risk_level === 'high')) recs.push('Consider alternatives with fewer high-risk additives.')
+  if (warnings.some(w => w.includes('SUGAR'))) recs.push('Look for "no added sugar" or "sugar-free" versions.')
+  if (warnings.some(w => w.includes('SODIUM'))) recs.push('Try "low sodium" or "no salt added" variants.')
+  if (warnings.some(w => w.includes('TRANS FAT'))) recs.push('Avoid this product — trans fat has no safe level.')
+  if (warnings.some(w => w.includes('ultra-processed') || w.includes('NOVA 4'))) recs.push('Switch to a minimally processed alternative.')
+  if (conditions.has('diabetes')) recs.push('Track your blood sugar after consuming to understand your personal response.')
+  if (recs.length === 0) recs.push('Enjoy as part of a balanced diet. Monitor portion sizes.')
   return recs
 }
 
-function analyzeNutrition(
-  nutriments: Record<string, number>,
-  userProfile: UserHealthProfile | null,
-  currentScore: number,
-  warnings: string[],
-  risks: PersonalizedRisk[],
-  unsafeConditions: Set<string>,
-  safeConditions: Set<string>
-): number {
-  let score = currentScore
-
-  // Sugar analysis
-  const sugar = nutriments.sugars_100g || 0
-  if (sugar > 22.5) {
-    score += SCORE_WEIGHTS.high_sugar
-    warnings.push(`🔴 HIGH SUGAR: ${sugar}g per 100g (WHO recommends <25g/day total)`)
-
-    const diabetesConditions = ['diabetes', 'prediabetes', 'gestational_diabetes']
-    const hasRelatedCondition = userProfile?.conditions?.some(c =>
-      diabetesConditions.includes(normalizeCondition(c))
-    )
-    if (hasRelatedCondition) {
-      const matchedCondition = userProfile!.conditions.find(c =>
-        diabetesConditions.includes(normalizeCondition(c))
-      )!
-      risks.push({
-        condition: matchedCondition,
-        severity: 'high',
-        explanation: `This product contains ${sugar}g sugar per 100g. For diabetes management, aim for <5g per serving.`,
-        source: 'American Diabetes Association',
-        recommendation: 'Choose products with <5g sugar per serving. Consider sugar-free alternatives.'
-      })
-      unsafeConditions.add('diabetes')
-      safeConditions.delete(matchedCondition)
-    }
-  } else if (sugar > 10) {
-    score += SCORE_WEIGHTS.medium_sugar
-    warnings.push(`🟡 MODERATE SUGAR: ${sugar}g per 100g`)
-  }
-
-  // Sodium analysis
-  const sodium = (nutriments.sodium_100g || 0) * 1000
-  if (sodium > 600) {
-    score += SCORE_WEIGHTS.high_sodium
-    warnings.push(`🔴 HIGH SODIUM: ${Math.round(sodium)}mg per 100g (AHA recommends <2300mg/day)`)
-
-    const bpConditions = ['hypertension', 'cardiovascular', 'kidney_disease']
-    const hasRelatedCondition = userProfile?.conditions?.some(c =>
-      bpConditions.includes(normalizeCondition(c))
-    )
-    if (hasRelatedCondition) {
-      const matchedCondition = userProfile!.conditions.find(c =>
-        bpConditions.includes(normalizeCondition(c))
-      )!
-      risks.push({
-        condition: matchedCondition,
-        severity: 'high',
-        explanation: `High sodium (${Math.round(sodium)}mg/100g) directly elevates blood pressure. AHA limit: 1500mg/day for your condition.`,
-        source: 'American Heart Association',
-        recommendation: 'Look for "low sodium" (<140mg/serving) or "no salt added" alternatives.'
-      })
-      unsafeConditions.add('hypertension')
-      safeConditions.delete(matchedCondition)
-    }
-  } else if (sodium > 300) {
-    score += SCORE_WEIGHTS.medium_sodium
-    warnings.push(`🟡 MODERATE SODIUM: ${Math.round(sodium)}mg per 100g`)
-  }
-
-  // Saturated fat
-  const satFat = nutriments.saturated_fat_100g || 0
-  if (satFat > 5) {
-    score += SCORE_WEIGHTS.high_saturated_fat
-    warnings.push(`🔴 HIGH SATURATED FAT: ${satFat}g per 100g (WHO recommends <10% of daily calories)`)
-
-    const cvConditions = ['cardiovascular', 'obesity', 'high_cholesterol']
-    if (userProfile?.conditions?.some(c => cvConditions.includes(normalizeCondition(c)))) {
-      risks.push({
-        condition: 'Cardiovascular Health',
-        severity: 'medium',
-        explanation: `High saturated fat increases LDL cholesterol. Current: ${satFat}g/100g. Limit: <2g per serving for heart health.`,
-        source: 'American Heart Association',
-        recommendation: 'Choose products with <1.5g saturated fat per serving.'
-      })
-    }
-  }
-
-  // Ultra-processed indicators
-  const ingredientCount = (String(nutriments.ingredients_text || '')).split(/[,;]/).length
-  if (ingredientCount > 15) {
-    score += SCORE_WEIGHTS.high_ultra_processed
-    warnings.push(`⚠️ ULTRA-PROCESSED: ${ingredientCount} ingredients detected. NOVA classification suggests limiting ultra-processed foods.`)
-  }
-
-  return score
-}
-
-function calculateUltraProcessedScore(product: OFFProduct): number {
-  let score = 0
-  const additives = product.additives_tags || []
-  const ingredients = (product.ingredients_text || '').split(/[,;]/).length
-
-  if (additives.length > 5) score += 30
-  else if (additives.length > 2) score += 15
-
-  if (ingredients > 15) score += 25
-  else if (ingredients > 10) score += 15
-
-  if (product.nutriments?.energy_kcal_100g && product.nutriments.energy_kcal_100g > 400) score += 10
-
-  return Math.min(100, score)
-}
-
-function checkDietaryRestrictions(
-  product: OFFProduct,
-  restrictions: string[],
-  score: number,
-  warnings: string[],
-  unsafeConditions: Set<string>
-): number {
-  const labels = product.labels_tags || []
-  const ingredients = product.ingredients_text?.toLowerCase() || ''
-
-  restrictions.forEach(restriction => {
-    switch(restriction) {
-      case 'vegan':
-        if (ingredients.includes('milk') || ingredients.includes('egg') || ingredients.includes('honey') ||
-            ingredients.includes('whey') || ingredients.includes('casein') || ingredients.includes('lactose') ||
-            ingredients.includes('gelatin') || ingredients.includes('shellac')) {
-          score += SCORE_WEIGHTS.dietary_violation
-          warnings.push(`🚫 NOT VEGAN: Contains animal-derived ingredients`)
-          unsafeConditions.add('vegan')
-        }
-        break
-      case 'vegetarian':
-        if (ingredients.includes('meat') || ingredients.includes('fish') || ingredients.includes('gelatin') ||
-            ingredients.includes('rennet') || ingredients.includes('carmine')) {
-          score += SCORE_WEIGHTS.dietary_violation
-          warnings.push(`🚫 NOT VEGETARIAN: Contains meat/fish products`)
-          unsafeConditions.add('vegetarian')
-        }
-        break
-      case 'gluten_free':
-        if (!labels.includes('en:gluten-free') && (ingredients.includes('wheat') || ingredients.includes('barley') ||
-            ingredients.includes('rye') || ingredients.includes('malt') || ingredients.includes('gluten'))) {
-          score += SCORE_WEIGHTS.dietary_violation
-          warnings.push(`🚫 CONTAINS GLUTEN: Not safe for celiac disease or gluten sensitivity`)
-          unsafeConditions.add('gluten_free')
-        }
-        break
-      case 'dairy_free':
-        if (ingredients.includes('milk') || ingredients.includes('whey') || ingredients.includes('casein') ||
-            ingredients.includes('lactose') || ingredients.includes('butter') || ingredients.includes('cream')) {
-          score += SCORE_WEIGHTS.dietary_violation
-          warnings.push(`🚫 CONTAINS DAIRY: Contains milk-derived ingredients`)
-          unsafeConditions.add('dairy_free')
-        }
-        break
-      case 'kosher':
-        if (!labels.includes('en:kosher') && (ingredients.includes('pork') || ingredients.includes('shellfish') ||
-            ingredients.includes('crab') || ingredients.includes('lobster'))) {
-          warnings.push(`⚠️ Not certified kosher. Check for non-kosher ingredients.`)
-        }
-        break
-      case 'halal':
-        if (!labels.includes('en:halal') && (ingredients.includes('pork') || ingredients.includes('lard') ||
-            ingredients.includes('gelatin') || ingredients.includes('alcohol') || ingredients.includes('wine'))) {
-          warnings.push(`⚠️ Not certified halal. Check for pork, alcohol, or non-halal gelatin.`)
-        }
-        break
-      case 'keto':
-        const carbs = product.nutriments?.carbohydrates_100g || 0
-        if (carbs > 10) {
-          score += SCORE_WEIGHTS.dietary_violation
-          warnings.push(`🚫 NOT KETO-FRIENDLY: ${carbs}g carbs per 100g (keto typically <20-50g/day)`)
-          unsafeConditions.add('keto')
-        }
-        break
-    }
-  })
-
-  return score
-}
-
-function getRecommendationForCondition(condition: string, additiveCode: string): string {
-  const recommendations: Record<string, Record<string, string>> = {
-    'diabetes': {
-      'default': 'Choose products with <5g sugar per serving. Look for whole food ingredients.',
-      'E951': 'Consider natural sweeteners like stevia or monk fruit instead of aspartame.',
-      'E955': 'Try erythritol or allulose as lower-impact alternatives.'
-    },
-    'cancer_history': {
-      'default': 'Prioritize organic, minimally processed foods. Avoid nitrites and artificial colors.',
-      'E250': 'Choose uncured meats or plant-based alternatives. Look for "no nitrites added."',
-      'E320': 'Avoid products with BHA/BHT. Choose natural vitamin E (tocopherols) as preservative.',
-      'E129': 'Select products with natural colors (beet juice, turmeric, spirulina).'
-    },
-    'hypertension': {
-      'default': 'Aim for <140mg sodium per serving. Choose "no salt added" or "low sodium" options.',
-      'E250': 'Sodium nitrite adds sodium. Choose fresh or frozen unprocessed meats.'
-    },
-    'pregnancy': {
-      'default': 'Avoid all artificial sweeteners, high-mercury fish, and unpasteurized products.',
-      'E951': 'AVOID during pregnancy. Use small amounts of honey, maple syrup, or fruit.',
-      'E250': 'Limit processed meats. Choose fresh-cooked proteins.',
-      'E129': 'Avoid artificial colors. Choose naturally colored foods.'
-    },
-    'adhd': {
-      'default': 'Eliminate artificial colors, flavors, and preservatives. Focus on whole foods.',
-      'E102': 'AVOID completely. Choose products with natural coloring.',
-      'E129': 'AVOID completely. This is strongly linked to hyperactivity.',
-      'E211': 'Minimize exposure. Choose fresh or frozen over shelf-stable products.'
-    },
-    'migraine': {
-      'default': 'Avoid MSG, artificial sweeteners, nitrates, and aged cheeses.',
-      'E621': 'AVOID MSG completely. Check for "hydrolyzed protein" and "yeast extract" too.',
-      'E951': 'Avoid aspartame - common migraine trigger.',
-      'E250': 'Nitrates are common migraine triggers. Choose fresh meats.'
-    },
-    'autoimmune': {
-      'default': 'Follow anti-inflammatory diet. Avoid processed foods, gluten, and nightshades if sensitive.',
-      'E407': 'Carrageenan may increase inflammation. Choose products without it.',
-      'E320': 'BHA may disrupt immune function. Choose natural antioxidants.'
-    }
-  }
-
-  const conditionRecs = recommendations[condition]
-  if (conditionRecs) {
-    return conditionRecs[additiveCode] || conditionRecs['default'] || 'Consult your healthcare provider for personalized advice.'
-  }
-
-  return 'Consider alternatives without this ingredient. Consult your healthcare provider.'
-}
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 export function getHealthScoreColor(score: number): string {
-  if (score >= 80) return 'text-green-600 bg-green-50 border-green-200'
-  if (score >= 50) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
+  if (score >= 70) return 'text-green-600 bg-green-50 border-green-200'
+  if (score >= 45) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
   return 'text-red-600 bg-red-50 border-red-200'
 }
 
 export function getRiskLevelDescription(level: 'green' | 'yellow' | 'red'): string {
-  switch(level) {
-    case 'green': return 'This product aligns well with your health profile. Safe to consume regularly.'
-    case 'yellow': return 'This product has some concerns. Moderate consumption recommended. Review the warnings below.'
-    case 'red': return 'This product poses significant risks for your health profile. Consider alternatives.'
+  switch (level) {
+    case 'green': return 'Generally safe for regular consumption.'
+    case 'yellow': return 'Some concerns. Moderate consumption recommended. Review warnings below.'
+    case 'red': return 'Significant health concerns. Consider alternatives or limit consumption.'
   }
 }
 
 export function getNutriScoreGrade(product: OFFProduct): string {
-  return product.nutriscore_grade?.toUpperCase() || product.nutrition_grades?.toUpperCase() || 'N/A'
+  return (product.nutriscore_grade || product.nutrition_grades || '').toUpperCase() || 'N/A'
+}
+
+export function normalizeCondition(c: string): string {
+  return c.toLowerCase().replace(/[\s-]/g, '_')
 }
