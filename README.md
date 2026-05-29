@@ -1,12 +1,12 @@
 # HealthScan App
 
-**Know exactly what you eat.** Scan any food product barcode, analyze ingredients for health risks, and track your weekly chemical exposure.
+**Know more about what you eat.** Scan packaged food labels, review ingredients and nutrition, and track recurring exposure events.
 
 ## Features
 
 - **Instant Barcode Scanning** - Camera + manual entry support
 - **Personalized Health Analysis** - Based on YOUR conditions, allergies, diet
-- **Additive Deep Dive** - 20+ cancer-linked additives with EFSA/FDA/IARC data
+- **Additive Deep Dive** - 20+ additives of concern with public-source notes and citations
 - **Weekly Health Tracking** - Cumulative sodium, sugar, additive exposure
 - **Better Alternatives** - Healthier product suggestions
 - **Family Profiles** - Multi-user health management

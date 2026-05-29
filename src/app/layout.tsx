@@ -7,14 +7,14 @@ import Link from 'next/link'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'HealthScan - Know What You Eat',
-  description: 'Scan any food product, analyze 20+ cancer-linked additives, track chemical exposure, and get personalized health alerts.',
-  keywords: 'food scanner India, ingredient checker, barcode scanner, food additives, health tracker, nutrition app',
+  title: 'HealthScan - Food Label Scanner',
+  description: 'Food label scanner that explains ingredients, nutrition, and additives of concern. Informational only, not medical advice.',
+  keywords: 'food scanner India, ingredient checker, barcode scanner, additives of concern, nutrition app, label scanner',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'HealthScan' },
   openGraph: {
-    title: 'HealthScan - Know What You Eat',
-    description: 'Scan food barcodes, get instant health analysis, track weekly chemical exposure',
+    title: 'HealthScan - Food Label Scanner',
+    description: 'Scan food barcodes, review ingredients, and compare label details with cited public sources.',
     type: 'website',
   },
 }
@@ -35,9 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.className} bg-gray-50 min-h-screen`}>
         <Navbar />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-5 pb-20">
-          {children}
-        </main>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-5 pb-20">{children}</main>
         <footer className="bg-white border-t border-gray-100 mt-8">
           <div className="max-w-4xl mx-auto px-4 py-6">
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-4">
@@ -46,10 +44,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Terms of Service</Link>
               <Link href="/contact" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Contact Us</Link>
             </div>
-            <p className="text-xs text-gray-400 text-center leading-relaxed max-w-2xl mx-auto">
-              <strong className="text-gray-500">⚕️ Medical Disclaimer:</strong> HealthScan provides general educational information about food ingredients only. 
-              Not a substitute for professional medical advice. Always consult a qualified healthcare professional.
-              Product data sourced from Open Food Facts (crowd-sourced). Information may be incomplete or inaccurate.
+            <p className="text-xs text-gray-500 text-center leading-relaxed max-w-2xl mx-auto">
+              <strong className="text-gray-600">Medical Disclaimer:</strong> HealthScan provides general educational information about food labels, ingredients, nutrition, and additives of concern based on available public food-safety sources. It is informational only and not medical advice. Product data may be incomplete or inaccurate.
             </p>
             <p className="text-xs text-gray-300 text-center mt-3">© 2026 HealthScan · tintiinn18@gmail.com</p>
           </div>
