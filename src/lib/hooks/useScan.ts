@@ -19,6 +19,12 @@ interface ProductLookupResponse {
   barcode?: string
 }
 
+interface PhotoAnalysisResponse {
+  product?: OFFProduct
+  analysis?: HealthAnalysis
+  error?: string
+}
+
 export function useScan() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -152,6 +158,50 @@ export function useScan() {
     [resolveUserContext, runAnalysis, supabase]
   )
 
+  const analyzePhotoProduct = useCallback(
+    async (file: File) => {
+      setLoading(true)
+      setError(null)
+      setProduct(null)
+      setAnalysis(null)
+      setMissingBarcode(null)
+      setMissingProductHint(null)
+
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/analyse-photo', {
+          method: 'POST',
+          body: formData,
+        })
+        const data = (await response.json()) as PhotoAnalysisResponse
+
+        if (!response.ok || !data.product || !data.analysis) {
+          throw new Error(data.error || 'AI photo analysis failed')
+        }
+
+        setProduct(data.product)
+        setAnalysis(data.analysis)
+
+        const { userId } = await resolveUserContext()
+        if (userId) {
+          await saveScan(userId, data.product, data.analysis)
+          await updateDailyLog(userId, data.analysis)
+          await updateChemicalExposure(userId, data.product, data.analysis)
+        }
+
+        return { product: data.product, analysis: data.analysis }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'AI photo analysis failed. Try another product photo.')
+        return null
+      } finally {
+        setLoading(false)
+      }
+    },
+    [resolveUserContext]
+  )
+
   const saveScan = async (userId: string, productData: OFFProduct, analysisData: HealthAnalysis) => {
     const scan: Partial<ScannedProduct> = {
       user_id: userId,
@@ -259,6 +309,7 @@ export function useScan() {
   return {
     scanBarcode,
     analyzeManualProduct,
+    analyzePhotoProduct,
     loading,
     error,
     product,

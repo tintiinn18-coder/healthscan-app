@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
-import { Camera, X, ScanLine, Keyboard, Image as ImageIcon, Loader2, PenLine } from 'lucide-react'
+import { Camera, X, ScanLine, Keyboard, Image as ImageIcon, Loader2, PenLine, Zap } from 'lucide-react'
 import { ManualProductEntry } from './ManualProductEntry'
 import type { ManualProductInput, UserHealthProfile } from '@/types'
 
@@ -10,16 +10,18 @@ interface BarcodeScannerProps {
   onScan: (barcode: string) => void
   onClose: () => void
   onAnalyzeInput: (input: ManualProductInput) => Promise<void>
+  onAnalyzePhoto: (file: File) => Promise<void>
   userProfile?: Partial<UserHealthProfile> | null
 }
 
-type Tab = 'camera' | 'manual' | 'ocr' | 'ingredients'
+type Tab = 'camera' | 'manual' | 'aiPhoto' | 'ocr' | 'ingredients'
 
-export function BarcodeScanner({ onScan, onClose, onAnalyzeInput }: BarcodeScannerProps) {
+export function BarcodeScanner({ onScan, onClose, onAnalyzeInput, onAnalyzePhoto }: BarcodeScannerProps) {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
   const [manualInput, setManualInput] = useState('')
   const [tab, setTab] = useState<Tab>('camera')
   const [ocrLoading, setOcrLoading] = useState(false)
+  const [aiPhotoLoading, setAiPhotoLoading] = useState(false)
   const [ocrText, setOcrText] = useState('')
   const [scanError, setScanError] = useState<string | null>(null)
 
@@ -100,9 +102,28 @@ export function BarcodeScanner({ onScan, onClose, onAnalyzeInput }: BarcodeScann
     }
   }
 
+  const handleAIPhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setAiPhotoLoading(true)
+    setScanError(null)
+
+    try {
+      await onAnalyzePhoto(file)
+      onClose()
+    } catch {
+      setScanError('AI photo analysis failed. Try a clearer front/ingredients/nutrition label photo.')
+    } finally {
+      setAiPhotoLoading(false)
+      event.target.value = ''
+    }
+  }
+
   const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
     { id: 'camera', label: 'Camera', icon: <Camera className="h-4 w-4" /> },
     { id: 'manual', label: 'Barcode', icon: <Keyboard className="h-4 w-4" /> },
+    { id: 'aiPhoto', label: 'AI Photo', icon: <Zap className="h-4 w-4" /> },
     { id: 'ocr', label: 'Photo OCR', icon: <ImageIcon className="h-4 w-4" /> },
     { id: 'ingredients', label: 'Ingredients', icon: <PenLine className="h-4 w-4" /> },
   ]
@@ -119,7 +140,7 @@ export function BarcodeScanner({ onScan, onClose, onAnalyzeInput }: BarcodeScann
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-1 px-4 pt-4 pb-2">
+      <div className="grid grid-cols-5 gap-1 px-4 pt-4 pb-2">
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -226,6 +247,44 @@ export function BarcodeScanner({ onScan, onClose, onAnalyzeInput }: BarcodeScann
                 Best results: steady phone, good lighting, ingredients fully in frame.
               </p>
             </div>
+          </>
+        )}
+
+        {tab === 'aiPhoto' && (
+          <>
+            <div className="bg-white rounded-2xl p-5 space-y-4">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto">
+                  <Zap className="h-8 w-8 text-blue-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">AI Product Photo Analysis</h3>
+                <p className="text-gray-500 text-sm">
+                  Upload a clear product photo with the front label, ingredients, or nutrition panel visible.
+                </p>
+              </div>
+              <label className="block w-full py-3 bg-blue-500 text-white rounded-xl font-semibold text-center cursor-pointer hover:bg-blue-600 transition-colors">
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAIPhotoUpload} />
+                {aiPhotoLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Analyzing photo...
+                  </span>
+                ) : (
+                  'AI Photo Scan'
+                )}
+              </label>
+              <div className="bg-blue-50 rounded-xl px-4 py-3">
+                <p className="text-blue-700 text-xs text-center leading-relaxed">
+                  AI will extract product details, ingredients, allergens, nutrition facts, processing level, and a cautious wellness summary.
+                </p>
+              </div>
+            </div>
+
+            {scanError && (
+              <div className="bg-red-500/20 border border-red-500/30 rounded-xl px-4 py-3">
+                <p className="text-red-200 text-sm text-center">{scanError}</p>
+              </div>
+            )}
           </>
         )}
 

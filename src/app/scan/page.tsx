@@ -34,6 +34,7 @@ export default function ScanPage() {
   const {
     scanBarcode,
     analyzeManualProduct,
+    analyzePhotoProduct,
     loading,
     error,
     product,
@@ -74,6 +75,10 @@ export default function ScanPage() {
 
   const handleManualAnalyze = async (input: ManualProductInput) => {
     await analyzeManualProduct(input, activeProfile)
+  }
+
+  const handleAIPhotoAnalyze = async (file: File) => {
+    await analyzePhotoProduct(file)
   }
 
   const handleReset = () => {
@@ -117,7 +122,7 @@ export default function ScanPage() {
     <div className="max-w-xl mx-auto space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Scan a Product</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Barcode · Manual · Photo · Ingredients</p>
+        <p className="text-gray-500 text-sm mt-0.5">Barcode · Manual · AI Photo · OCR · Ingredients</p>
       </div>
 
       {familyMembers.length > 0 && (
@@ -182,7 +187,7 @@ export default function ScanPage() {
             </div>
             <div className="text-left">
               <p className="font-semibold">Open Scanner</p>
-              <p className="text-blue-100 text-xs">Camera · Barcode · Photo scan · Ingredients</p>
+              <p className="text-blue-100 text-xs">Camera · Barcode · AI photo · OCR · Ingredients</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 text-blue-200 group-hover:translate-x-0.5 transition-transform" />
@@ -192,8 +197,8 @@ export default function ScanPage() {
       {loading && (
         <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
           <Loader2 className="h-10 w-10 text-blue-500 animate-spin mx-auto mb-3" />
-          <h3 className="font-semibold text-gray-900">Analyzing ingredients...</h3>
-          <p className="text-gray-400 text-sm mt-1">Checking label text, additives, and nutrition details.</p>
+          <h3 className="font-semibold text-gray-900">Analyzing product...</h3>
+          <p className="text-gray-400 text-sm mt-1">Checking the label photo, additives, and nutrition details.</p>
         </div>
       )}
 
@@ -314,6 +319,7 @@ export default function ScanPage() {
           onScan={handleScan}
           onClose={() => setShowScanner(false)}
           onAnalyzeInput={handleManualAnalyze}
+          onAnalyzePhoto={handleAIPhotoAnalyze}
           userProfile={activeProfile}
         />
       )}
