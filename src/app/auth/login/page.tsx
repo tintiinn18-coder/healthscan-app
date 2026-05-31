@@ -1,7 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -10,15 +9,6 @@ import Link from 'next/link'
 import { ScanLine, Mail, Lock, Chrome, Github, ArrowLeft } from 'lucide-react'
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={<LoginSkeleton />}>
-      <LoginContent />
-    </Suspense>
-  )
-}
-
-function LoginContent() {
-  const searchParams = useSearchParams()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,23 +16,26 @@ function LoginContent() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signInWithEmail, signUp, signInWithOAuth, configError } = useAuth()
-  const callbackError = searchParams.get('error')
+  const { signInWithEmail, signUp, signInWithOAuth } = useAuth()
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      const result = isSignUp ? await signUp(email, password, fullName) : await signInWithEmail(email, password)
+      let result
+      if (isSignUp) {
+        result = await signUp(email, password, fullName)
+      } else {
+        result = await signInWithEmail(email, password)
+      }
+
       if (result.error) {
         setError(result.error.message)
-      } else if (isSignUp) {
-        setError('Check your email for a confirmation link if your project requires email verification.')
       }
-    } catch {
-      setError('An unexpected auth error occurred.')
+    } catch (err) {
+      setError('An unexpected error occurred')
     } finally {
       setLoading(false)
     }
@@ -61,15 +54,15 @@ function LoginContent() {
             <div className="w-12 h-12 bg-health-blue rounded-xl flex items-center justify-center mx-auto mb-4">
               <ScanLine className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">{isSignUp ? 'Create Account' : 'Welcome Back'}</h1>
-            <p className="text-gray-500 mt-2">{isSignUp ? 'Create a HealthScan account to save scans and label entries.' : 'Sign in to access your saved scans and profile.'}</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
+            </h1>
+            <p className="text-gray-500 mt-2">
+              {isSignUp 
+                ? 'Start tracking your health today' 
+                : 'Sign in to access your health data'}
+            </p>
           </div>
-
-          {(configError || callbackError) && (
-            <Alert variant="warning" className="mb-6">
-              {configError || 'Authentication callback failed. Check NEXT_PUBLIC_SITE_URL and your Supabase redirect settings.'}
-            </Alert>
-          )}
 
           {error && (
             <Alert variant="error" className="mb-6">
@@ -86,7 +79,7 @@ function LoginContent() {
                   <input
                     type="text"
                     value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
+                    onChange={(e) => setFullName(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="John Doe"
                     required
@@ -102,7 +95,7 @@ function LoginContent() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder="you@example.com"
                   required
@@ -117,7 +110,7 @@ function LoginContent() {
                 <input
                   type="password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder="••••••••"
                   required
@@ -126,7 +119,12 @@ function LoginContent() {
               </div>
             </div>
 
-            <Button type="submit" fullWidth loading={loading} size="lg" disabled={Boolean(configError)}>
+            <Button
+              type="submit"
+              fullWidth
+              loading={loading}
+              size="lg"
+            >
               {isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
           </form>
@@ -141,11 +139,19 @@ function LoginContent() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="secondary" onClick={() => signInWithOAuth('google')} className="flex items-center gap-2" disabled={Boolean(configError)}>
+            <Button
+              variant="secondary"
+              onClick={() => signInWithOAuth('google')}
+              className="flex items-center gap-2"
+            >
               <Chrome className="h-4 w-4" />
               Google
             </Button>
-            <Button variant="secondary" onClick={() => signInWithOAuth('github')} className="flex items-center gap-2" disabled={Boolean(configError)}>
+            <Button
+              variant="secondary"
+              onClick={() => signInWithOAuth('github')}
+              className="flex items-center gap-2"
+            >
               <Github className="h-4 w-4" />
               GitHub
             </Button>
@@ -153,27 +159,15 @@ function LoginContent() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button onClick={() => { setIsSignUp(!isSignUp); setError('') }} className="text-health-blue font-medium hover:underline">
+            <button
+              onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
+              className="text-health-blue font-medium hover:underline"
+            >
               {isSignUp ? 'Sign in' : 'Sign up'}
             </button>
           </p>
         </Card>
       </div>
-    </div>
-  )
-}
-
-function LoginSkeleton() {
-  return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <Card className="p-8 w-full max-w-md">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-40 bg-gray-100 rounded mx-auto" />
-          <div className="h-11 bg-gray-100 rounded-xl" />
-          <div className="h-11 bg-gray-100 rounded-xl" />
-          <div className="h-11 bg-gray-100 rounded-xl" />
-        </div>
-      </Card>
     </div>
   )
 }

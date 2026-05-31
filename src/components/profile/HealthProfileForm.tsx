@@ -265,7 +265,7 @@ export function HealthProfileForm() {
             <AlertCircle className="h-5 w-5 text-health-yellow" />
             <CardTitle>Allergies</CardTitle>
           </div>
-          <CardDescription>We&apos;ll warn you when products contain these</CardDescription>
+          <CardDescription>We'll warn you when products contain these</CardDescription>
         </CardHeader>
         <div className="flex flex-wrap gap-2">
           {COMMON_ALLERGIES.map(allergy => (
