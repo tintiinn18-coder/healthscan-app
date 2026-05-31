@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import { InstallBanner } from '@/components/layout/InstallBanner'
 import Link from 'next/link'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'HealthScan - Know What You Eat',
@@ -37,13 +34,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+      <body className="font-sans bg-gray-50 min-h-screen">
         <Navbar />
         <InstallBanner />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 py-5 pb-24">
           {children}
         </main>
-        <footer className="bg-white border-t border-gray-100 mt-8 pb-safe">
+        <footer className="bg-white border-t border-gray-100 mt-8">
           <div className="max-w-4xl mx-auto px-4 py-5">
             <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-3">
               <Link href="/disclaimer" className="text-xs text-gray-400 hover:text-gray-600">Disclaimer</Link>

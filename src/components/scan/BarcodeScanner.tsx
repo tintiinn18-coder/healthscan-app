@@ -197,7 +197,7 @@ export function BarcodeScanner({ onScan, onClose, onManualResult, userProfile }:
                 <div className="bg-gray-50 rounded-xl p-3 max-h-40 overflow-y-auto">
                   <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{ocrText}</p>
                 </div>
-                <p className="text-xs text-gray-400">If you can see the ingredients here, switch to the "Ingredients" tab and paste them for a full health analysis.</p>
+                <p className="text-xs text-gray-400">If you can see the ingredients here, switch to the &quot;Ingredients&quot; tab and paste them for a full health analysis.</p>
               </div>
             )}
             <div className="bg-white/5 rounded-xl px-4 py-3">

@@ -179,7 +179,7 @@ export default function ScanPage() {
             </div>
           </div>
           <div className="bg-amber-50 rounded-xl p-3">
-            <p className="text-xs text-amber-700 leading-relaxed"><strong>💡 Tip:</strong> Many Indian local brands aren't in the global database yet. Use the <strong>"Ingredients"</strong> tab to type the ingredients list directly for a full health analysis — no barcode needed.</p>
+            <p className="text-xs text-amber-700 leading-relaxed"><strong>💡 Tip:</strong> Many Indian local brands aren&apos;t in the global database yet. Use the <strong>&quot;Ingredients&quot;</strong> tab to type the ingredients list directly for a full health analysis — no barcode needed.</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowScanner(true)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-600 transition-colors">

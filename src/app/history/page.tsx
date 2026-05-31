@@ -235,7 +235,7 @@ export default function HistoryPage() {
           <TrendingUp className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-blue-800">Your nutrition tracker is running</p>
-            <p className="text-xs text-blue-600 mt-0.5">Only consumed products affect your daily budget. Visit the <Link href="/tracker" className="underline font-medium">Tracker page</Link> to see today's totals.</p>
+            <p className="text-xs text-blue-600 mt-0.5">Only consumed products affect your daily budget. Visit the <Link href="/tracker" className="underline font-medium">Tracker page</Link> to see today&apos;s totals.</p>
           </div>
         </div>
       )}
