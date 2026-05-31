@@ -103,6 +103,6 @@ export function buildSyntheticProduct(input: {
     categories: category,
     categories_tags: [`en:${category.toLowerCase().replace(/\s+/g, '-')}`],
     labels_tags: [],
-    source: input.source || 'manual',
+
   }
 }
