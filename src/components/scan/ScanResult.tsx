@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, Info, Zap, AlertCircle } from 'lucide-react'
 import type { OFFProduct, HealthAnalysis } from '@/types'
 
@@ -34,7 +35,7 @@ export function ScanResult({ product, analysis }: ScanResultProps) {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 flex gap-3">
         <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden">
           {product.image_url ? (
-            <img src={product.image_url} alt={product.product_name} className="w-full h-full object-cover" />
+            <Image src={product.image_url} alt={product.product_name || 'Product'} width={80} height={80} className="w-full h-full object-cover" unoptimized />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Info className="h-7 w-7 text-gray-300" />

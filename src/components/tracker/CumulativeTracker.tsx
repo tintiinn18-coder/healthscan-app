@@ -164,7 +164,7 @@ export function CumulativeTracker() {
       {weeklyStats.top_concerns.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>⚠️ This Week's Concerns</CardTitle>
+            <CardTitle>⚠️ This Week&apos;s Concerns</CardTitle>
           </CardHeader>
           <div className="space-y-2">
             {weeklyStats.top_concerns.map((concern, i) => (
