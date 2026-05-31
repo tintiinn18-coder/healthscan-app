@@ -87,7 +87,7 @@ export function buildSyntheticProduct(input: {
   category?: string
   ingredientsText: string
   nutriments?: Record<string, number>
-  source?: OFFProduct['source']
+  source?: string
 }): OFFProduct {
   const category = input.category || 'Other'
 
